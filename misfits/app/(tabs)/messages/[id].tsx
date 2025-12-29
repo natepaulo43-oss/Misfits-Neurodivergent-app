@@ -3,8 +3,7 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  FlatList, 
-  SafeAreaView,
+  FlatList,
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
@@ -12,7 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LoadingSpinner } from '../../../components';
+import { LoadingSpinner, Screen } from '../../../components';
 import { colors, spacing, typography, borderRadius } from '../../../constants/theme';
 import { Message } from '../../../types';
 import { fetchMessages, sendMessage } from '../../../services/messages';
@@ -102,7 +101,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen padding="none">
       <KeyboardAvoidingView 
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -141,15 +140,11 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   keyboardView: {
     flex: 1,
   },

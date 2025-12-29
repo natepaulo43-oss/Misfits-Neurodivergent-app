@@ -1,28 +1,29 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { Button } from '../../components';
+import { Button, Screen, Card } from '../../components';
 import { colors, spacing, typography } from '../../constants/theme';
 
 export default function HomeScreen() {
   const { user } = useAuth();
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.welcome}>
-            Welcome{user?.name ? `, ${user.name}` : ''}!
-          </Text>
-          <Text style={styles.description}>
-            Misfits connects neurodiverse students with mentors who understand 
-            their unique learning journey. Browse our community of mentors or 
-            explore our curated book collection.
-          </Text>
-        </View>
+    <Screen scroll align="left">
+      <Card style={styles.heroCard}>
+        <Text style={styles.welcome}>
+          Welcome{user?.name ? `, ${user.name}` : ''}!
+        </Text>
+        <Text style={styles.description}>
+          Misfits connects neurodiverse students with mentors who understand 
+          their unique learning journey. Browse our community of mentors or 
+          explore our curated book collection.
+        </Text>
+      </Card>
 
-        <View style={styles.actions}>
+      <View style={styles.actions}>
+        <Text style={styles.sectionTitle}>Quick Access</Text>
+        <View style={styles.buttonStack}>
           <Button
             title="Browse Mentors"
             onPress={() => router.push('/(tabs)/mentors')}
@@ -37,28 +38,25 @@ export default function HomeScreen() {
             style={styles.button}
           />
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  heroCard: {
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
   },
-  content: {
-    flex: 1,
-    padding: spacing.lg,
-    justifyContent: 'center',
-  },
-  header: {
-    marginBottom: spacing.xxl,
+  sectionTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   welcome: {
     ...typography.title,
     color: colors.textPrimary,
-    marginBottom: spacing.md,
   },
   description: {
     ...typography.body,
@@ -66,6 +64,10 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   actions: {
+    width: '100%',
+    marginTop: spacing.xl,
+  },
+  buttonStack: {
     gap: spacing.md,
   },
   button: {

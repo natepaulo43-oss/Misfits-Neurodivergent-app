@@ -3,14 +3,13 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { Button, Input } from '../../components';
+import { Button, Input, Screen, Card } from '../../components';
 import { colors, spacing, typography } from '../../constants/theme';
 
 export default function SignupScreen() {
@@ -46,89 +45,91 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.content}
+        style={styles.keyboard}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>
-            Join our community of learners and mentors
-          </Text>
-        </View>
-
-        <View style={styles.form}>
-          <Input
-            label="Name"
-            placeholder="Enter your name"
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-          />
-
-          <Input
-            label="Email"
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <Input
-            label="Password"
-            placeholder="Create a password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <Button
-            title="Continue"
-            onPress={handleSignup}
-            loading={loading}
-            style={styles.button}
-          />
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-              <Text style={styles.link}>Log In</Text>
-            </TouchableOpacity>
+        <Card style={styles.card}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>
+              Join our community of learners and mentors.
+            </Text>
           </View>
-        </View>
+
+          <View style={styles.form}>
+            <Input
+              label="Name"
+              placeholder="Your full name"
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+            />
+
+            <Input
+              label="Email"
+              placeholder="email@example.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <Input
+              label="Password"
+              placeholder="Create a password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <Button
+              title="Continue"
+              onPress={handleSignup}
+              loading={loading}
+              style={styles.button}
+            />
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Already have an account?</Text>
+              <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+                <Text style={styles.link}>Log In</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Card>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  keyboard: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  content: {
+  card: {
     flex: 1,
-    padding: spacing.lg,
     justifyContent: 'center',
+    gap: spacing.lg,
   },
   header: {
-    marginBottom: spacing.xl,
+    gap: spacing.xs,
+    marginBottom: spacing.lg,
   },
   title: {
     ...typography.title,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
   },
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
+    lineHeight: 20,
   },
   form: {
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   error: {
     ...typography.bodySmall,
@@ -141,7 +142,9 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.md,
   },
   footerText: {
     ...typography.body,

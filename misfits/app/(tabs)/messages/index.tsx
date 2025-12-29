@@ -3,12 +3,11 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  FlatList, 
-  SafeAreaView,
+  FlatList,
   TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Avatar, LoadingSpinner, EmptyState } from '../../../components';
+import { Avatar, LoadingSpinner, EmptyState, Screen } from '../../../components';
 import { colors, spacing, typography, borderRadius } from '../../../constants/theme';
 import { MessageThread } from '../../../types';
 import { fetchThreads } from '../../../services/messages';
@@ -22,7 +21,11 @@ export default function MessagesListScreen() {
 
   useEffect(() => {
     if (user) {
+      setLoading(true);
       loadThreads();
+    } else {
+      setThreads([]);
+      setLoading(false);
     }
   }, [user]);
 
@@ -72,15 +75,17 @@ export default function MessagesListScreen() {
 
   if (threads.length === 0) {
     return (
-      <EmptyState
-        title="No Messages Yet"
-        message="Start a conversation by messaging a mentor from their profile."
-      />
+      <Screen>
+        <EmptyState
+          title="No Messages Yet"
+          message="Start a conversation by messaging a mentor from their profile."
+        />
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen padding="none" contentContainerStyle={styles.screenContent}>
       <FlatList
         data={threads}
         renderItem={renderThread}
@@ -89,17 +94,17 @@ export default function MessagesListScreen() {
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screenContent: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   list: {
-    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
   },
   thread: {
     flexDirection: 'row',

@@ -3,12 +3,10 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  ScrollView, 
-  SafeAreaView,
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { Avatar, Tag, Button, LoadingSpinner } from '../../../components';
+import { Avatar, Tag, Button, LoadingSpinner, Screen } from '../../../components';
 import { colors, spacing, typography } from '../../../constants/theme';
 import { Mentor } from '../../../types';
 import { fetchMentorById } from '../../../services/mentors';
@@ -39,7 +37,19 @@ export default function MentorDetailScreen() {
   };
 
   const handleMessageMentor = async () => {
-    if (!mentor || !user) return;
+    if (!mentor) return;
+
+    if (!user) {
+      Alert.alert(
+        'Login Required',
+        'Please log in or create an account to message mentors.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Go to Login', onPress: () => router.push('/(auth)/login') },
+        ]
+      );
+      return;
+    }
 
     setMessaging(true);
     try {
@@ -65,55 +75,46 @@ export default function MentorDetailScreen() {
 
   if (!mentor) {
     return (
-      <SafeAreaView style={styles.container}>
+      <Screen>
         <View style={styles.centered}>
           <Text style={styles.errorText}>Mentor not found</Text>
         </View>
-      </SafeAreaView>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Avatar name={mentor.name} uri={mentor.profileImage} size="large" />
-          <Text style={styles.name}>{mentor.name}</Text>
-        </View>
+    <Screen scroll>
+      <View style={styles.header}>
+        <Avatar name={mentor.name} uri={mentor.profileImage} size="large" />
+        <Text style={styles.name}>{mentor.name}</Text>
+      </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.bio}>{mentor.bio}</Text>
-        </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>About</Text>
+        <Text style={styles.bio}>{mentor.bio}</Text>
+      </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Expertise</Text>
-          <View style={styles.tags}>
-            {mentor.expertise.map((tag, index) => (
-              <Tag key={index} label={tag} />
-            ))}
-          </View>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Expertise</Text>
+        <View style={styles.tags}>
+          {mentor.expertise.map((tag, index) => (
+            <Tag key={index} label={tag} />
+          ))}
         </View>
+      </View>
 
-        <Button
-          title="Message Mentor"
-          onPress={handleMessageMentor}
-          loading={messaging}
-          style={styles.button}
-        />
-      </ScrollView>
-    </SafeAreaView>
+      <Button
+        title="Message Mentor"
+        onPress={handleMessageMentor}
+        loading={messaging}
+        style={styles.button}
+      />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.lg,
-  },
   centered: {
     flex: 1,
     alignItems: 'center',

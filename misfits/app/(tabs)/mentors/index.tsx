@@ -3,11 +3,10 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  FlatList, 
-  SafeAreaView,
+  FlatList,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Card, Avatar, Tag, LoadingSpinner, EmptyState } from '../../../components';
+import { Card, Avatar, Tag, LoadingSpinner, EmptyState, Screen } from '../../../components';
 import { colors, spacing, typography } from '../../../constants/theme';
 import { Mentor } from '../../../types';
 import { fetchMentors } from '../../../services/mentors';
@@ -59,15 +58,17 @@ export default function MentorsListScreen() {
 
   if (mentors.length === 0) {
     return (
-      <EmptyState
-        title="No Mentors Available"
-        message="Check back soon for new mentors joining our community."
-      />
+      <Screen>
+        <EmptyState
+          title="No Mentors Available"
+          message="Check back soon for new mentors joining our community."
+        />
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen padding="none" contentContainerStyle={styles.screenContent}>
       <FlatList
         data={mentors}
         renderItem={renderMentor}
@@ -75,17 +76,17 @@ export default function MentorsListScreen() {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screenContent: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   list: {
-    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     gap: spacing.md,
   },
   card: {

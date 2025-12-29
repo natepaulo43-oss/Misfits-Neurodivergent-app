@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  SafeAreaView,
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
   Image,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Card, Tag, LoadingSpinner, EmptyState } from '../../../components';
+import { Card, Tag, LoadingSpinner, EmptyState, Screen } from '../../../components';
 import { colors, spacing, typography, borderRadius } from '../../../constants/theme';
 import { Book } from '../../../types';
 import { fetchBooks } from '../../../services/books';
@@ -38,9 +37,7 @@ export default function BooksListScreen() {
       onPress={() => router.push(`/(tabs)/books/${item.id}`)}
     >
       <View style={styles.cardContent}>
-        <View style={styles.coverPlaceholder}>
-          <Text style={styles.coverText}>📚</Text>
-        </View>
+        <Image source={item.coverImage} style={styles.coverImage} />
         <View style={styles.cardInfo}>
           <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
           <Text style={styles.author}>{item.author}</Text>
@@ -61,15 +58,17 @@ export default function BooksListScreen() {
 
   if (books.length === 0) {
     return (
-      <EmptyState
-        title="No Books Available"
-        message="Check back soon for new books in our collection."
-      />
+      <Screen>
+        <EmptyState
+          title="No Books Available"
+          message="Check back soon for new books in our collection."
+        />
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen padding="none" contentContainerStyle={styles.screenContent}>
       <FlatList
         data={books}
         renderItem={renderBook}
@@ -77,17 +76,17 @@ export default function BooksListScreen() {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screenContent: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   list: {
-    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     gap: spacing.md,
   },
   card: {
@@ -97,16 +96,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
   },
-  coverPlaceholder: {
+  coverImage: {
     width: 80,
     height: 120,
-    backgroundColor: colors.primaryLight,
     borderRadius: borderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coverText: {
-    fontSize: 32,
+    resizeMode: 'cover',
   },
   cardInfo: {
     flex: 1,
