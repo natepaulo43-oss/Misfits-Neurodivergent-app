@@ -4,12 +4,11 @@ import {
   Text, 
   StyleSheet, 
   ScrollView, 
-  SafeAreaView,
   Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { Avatar, Button, Input } from '../../components';
+import { Avatar, Button, Input, Screen } from '../../components';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 
 export default function ProfileScreen() {
@@ -60,8 +59,8 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <Screen>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Avatar name={user?.name} size="large" />
           <Text style={styles.name}>{user?.name || 'User'}</Text>
@@ -142,15 +141,11 @@ export default function ProfileScreen() {
           style={styles.logoutButton}
         />
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   content: {
     padding: spacing.lg,
   },

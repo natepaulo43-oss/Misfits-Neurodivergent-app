@@ -3,12 +3,11 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  SafeAreaView,
   TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { Button, Card } from '../../components';
+import { Button, Card, Screen } from '../../components';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 import { UserRole } from '../../types';
 
@@ -32,7 +31,7 @@ export default function RoleSelectionScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen>
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Choose Your Role</Text>
@@ -95,18 +94,13 @@ export default function RoleSelectionScreen() {
           style={styles.button}
         />
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   content: {
     flex: 1,
-    padding: spacing.lg,
     justifyContent: 'center',
   },
   header: {

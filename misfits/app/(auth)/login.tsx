@@ -3,14 +3,13 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { Button, Input } from '../../components';
+import { Button, Input, Screen, Card } from '../../components';
 import { colors, spacing, typography } from '../../constants/theme';
 
 export default function LoginScreen() {
@@ -40,81 +39,83 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <Screen>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.content}
+        style={styles.keyboard}
       >
-        <View style={styles.header}>
-          <Text style={styles.title}>Welcome to Misfits</Text>
-          <Text style={styles.subtitle}>
-            Connecting neurodiverse students with mentors
-          </Text>
-        </View>
-
-        <View style={styles.form}>
-          <Input
-            label="Email"
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <Input
-            label="Password"
-            placeholder="Enter your password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <Button
-            title="Log In"
-            onPress={handleLogin}
-            loading={loading}
-            style={styles.button}
-          />
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-              <Text style={styles.link}>Sign Up</Text>
-            </TouchableOpacity>
+        <Card style={styles.card}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>
+              Sign in to continue your journey with Misfits.
+            </Text>
           </View>
-        </View>
+
+          <View style={styles.form}>
+            <Input
+              label="Email"
+              placeholder="email@example.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <Input
+              label="Password"
+              placeholder="Enter your password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <Button
+              title="Log In"
+              onPress={handleLogin}
+              loading={loading}
+              style={styles.button}
+            />
+
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Don't have an account?</Text>
+              <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
+                <Text style={styles.link}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Card>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  keyboard: {
     flex: 1,
-    backgroundColor: colors.background,
   },
-  content: {
+  card: {
     flex: 1,
-    padding: spacing.lg,
     justifyContent: 'center',
+    gap: spacing.lg,
   },
   header: {
-    marginBottom: spacing.xl,
+    gap: spacing.xs,
+    marginBottom: spacing.lg,
   },
   title: {
     ...typography.title,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
   },
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
+    lineHeight: 20,
   },
   form: {
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   error: {
     ...typography.bodySmall,
@@ -127,7 +128,9 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.md,
   },
   footerText: {
     ...typography.body,

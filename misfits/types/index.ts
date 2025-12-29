@@ -1,5 +1,7 @@
 // Data models per PRD Section 8
 
+import { ImageSourcePropType } from 'react-native';
+
 export type UserRole = 'student' | 'mentor' | 'admin';
 
 export interface User {
@@ -26,9 +28,12 @@ export interface Book {
   author: string;
   description: string;
   price: number;
-  coverImage: string;
+  coverImage: ImageSourcePropType;
   tags: string[];
   approved: boolean;
+  publisher: string;
+  publicationDate: string;
+  amazonUrl: string;
 }
 
 export interface Message {
