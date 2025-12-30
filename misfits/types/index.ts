@@ -8,7 +8,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
+  role: UserRole | null;
   interests?: string[];
   learningDifferences?: string[];
 }

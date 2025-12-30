@@ -2,13 +2,21 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
+const getEnv = (key: string): string => {
+  const value = process.env[key];
+  if (!value) {
+    throw new Error(`Missing environment variable: ${key}`);
+  }
+  return value;
+};
+
 const firebaseConfig = {
-  apiKey: 'AIzaSyAiHXOrZR4NSQP_7OJOMYERyZk14fhsScU',
-  authDomain: 'misfits-fe486.firebaseapp.com',
-  projectId: 'misfits-fe486',
-  storageBucket: 'misfits-fe486.firebasestorage.app',
-  messagingSenderId: '845863899218',
-  appId: '1:845863899218:web:1fb1d06aedad404b44cf8b',
+  apiKey: getEnv('EXPO_PUBLIC_FIREBASE_API_KEY'),
+  authDomain: getEnv('EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN'),
+  projectId: getEnv('EXPO_PUBLIC_FIREBASE_PROJECT_ID'),
+  storageBucket: getEnv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnv('EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnv('EXPO_PUBLIC_FIREBASE_APP_ID'),
 };
 
 const app = initializeApp(firebaseConfig);

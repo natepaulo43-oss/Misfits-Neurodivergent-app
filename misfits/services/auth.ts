@@ -27,7 +27,7 @@ export interface LoginData {
 type FirestoreUserData = {
   name?: string;
   email?: string;
-  role?: UserRole;
+  role?: UserRole | null;
   interests?: string[];
   learningDifferences?: string[];
 };
@@ -42,7 +42,7 @@ const buildUserFromData = (
   id: userId,
   name: data.name ?? fallback?.displayName ?? '',
   email: data.email ?? fallback?.email ?? '',
-  role: data.role ?? 'student',
+  role: typeof data.role === 'string' ? data.role : null,
   interests: data.interests,
   learningDifferences: data.learningDifferences,
 });
@@ -55,7 +55,7 @@ const fetchUserProfile = async (firebaseUser: FirebaseUser): Promise<User> => {
     const defaultData: FirestoreUserData = {
       name: firebaseUser.displayName ?? '',
       email: firebaseUser.email ?? '',
-      role: 'student',
+      role: null,
     };
     await setDoc(ref, defaultData, { merge: true });
     return buildUserFromData(firebaseUser.uid, defaultData, firebaseUser);
@@ -106,7 +106,7 @@ export const signUp = async (data: SignUpData): Promise<User> => {
   const newUserData: FirestoreUserData = {
     name: data.name,
     email: data.email,
-    role: 'student',
+    role: null,
   };
   await setDoc(userDocRef(credential.user.uid), newUserData, { merge: true });
 
@@ -137,7 +137,9 @@ export const updateUserProfile = async (
 
   if (typeof updates.name === 'string') allowedUpdates.name = updates.name;
   if (typeof updates.email === 'string') allowedUpdates.email = updates.email;
-  if (typeof updates.role === 'string') allowedUpdates.role = updates.role as UserRole;
+  if (typeof updates.role === 'string' || updates.role === null) {
+    allowedUpdates.role = updates.role as UserRole | null;
+  }
   if (Array.isArray(updates.interests)) allowedUpdates.interests = updates.interests;
   if (Array.isArray(updates.learningDifferences)) {
     allowedUpdates.learningDifferences = updates.learningDifferences;
