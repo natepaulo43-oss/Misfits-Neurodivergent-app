@@ -19,6 +19,19 @@ npm install
 npx expo start
 ```
 
+### Environment variables
+
+Copy `.env.example` to `.env` (and keep it out of git—already handled via the repo-level `.gitignore`) and fill each Firebase value:
+
+```
+cp .env.example .env
+```
+
+- Values prefixed with `EXPO_PUBLIC_` are exposed to the Expo client at build time, so only include non-privileged web credentials.
+- For production builds (EAS, CI), configure the same variables using the platform’s secret manager so they’re injected without committing them.
+
+If you need privileged Firebase Admin access, keep those credentials on a backend service (Cloud Functions, Next.js API routes, etc.) instead of the client.
+
 ## Project Structure
 
 ```
