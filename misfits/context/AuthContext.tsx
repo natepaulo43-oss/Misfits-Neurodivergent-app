@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole } from '../types';
-import { mockCurrentUser } from '../data/mockUsers';
 import * as authService from '../services/auth';
 
 interface AuthContextType {
@@ -21,13 +20,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Replace with Firebase onAuthStateChanged listener
-    // Check for existing session
-    const checkAuth = async () => {
-      // For MVP, start with no user (require login)
+    const unsubscribe = authService.subscribeToAuthChanges(authUser => {
+      setUser(authUser);
       setIsLoading(false);
-    };
-    checkAuth();
+    });
+
+    return unsubscribe;
   }, []);
 
   const login = async (email: string, password: string) => {
