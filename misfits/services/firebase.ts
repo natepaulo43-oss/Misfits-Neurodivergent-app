@@ -1,26 +1,19 @@
-// Firebase configuration stub
-// TODO: Replace with actual Firebase config when ready for production
-
-// Firebase will be initialized here
-// import { initializeApp } from 'firebase/app';
-// import { getAuth } from 'firebase/auth';
-// import { getFirestore } from 'firebase/firestore';
-// import { getStorage } from 'firebase/storage';
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  // TODO: Add Firebase config values
-  apiKey: 'YOUR_API_KEY',
-  authDomain: 'YOUR_AUTH_DOMAIN',
-  projectId: 'YOUR_PROJECT_ID',
-  storageBucket: 'YOUR_STORAGE_BUCKET',
-  messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-  appId: 'YOUR_APP_ID',
+  apiKey: 'AIzaSyAiHXOrZR4NSQP_7OJOMYERyZk14fhsScU',
+  authDomain: 'misfits-fe486.firebaseapp.com',
+  projectId: 'misfits-fe486',
+  storageBucket: 'misfits-fe486.firebasestorage.app',
+  messagingSenderId: '845863899218',
+  appId: '1:845863899218:web:1fb1d06aedad404b44cf8b',
 };
 
-// Placeholder exports - will be replaced with actual Firebase instances
-// export const app = initializeApp(firebaseConfig);
-// export const auth = getAuth(app);
-// export const db = getFirestore(app);
-// export const storage = getStorage(app);
+const app = initializeApp(firebaseConfig);
 
-export default firebaseConfig;
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export { app, firebaseConfig };
+export default app;
