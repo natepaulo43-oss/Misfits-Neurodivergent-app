@@ -22,7 +22,9 @@ export default function RoleSelectionScreen() {
     setLoading(true);
     try {
       await setUserRole(selectedRole);
-      router.replace('/(tabs)/home');
+      const destination =
+        selectedRole === 'mentor' ? '/(onboarding)/mentor' : '/(onboarding)/student';
+      router.replace(destination);
     } catch (err) {
       console.error('Failed to set role:', err);
     } finally {
