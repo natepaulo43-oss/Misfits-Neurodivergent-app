@@ -30,6 +30,9 @@ type FirestoreUserData = {
   role?: UserRole | null;
   interests?: string[];
   learningDifferences?: string[];
+  onboardingCompleted?: boolean;
+  studentProfile?: User['studentProfile'];
+  mentorProfile?: User['mentorProfile'];
 };
 
 const userDocRef = (userId: string) => doc(db, 'users', userId);
@@ -45,6 +48,9 @@ const buildUserFromData = (
   role: typeof data.role === 'string' ? data.role : null,
   interests: data.interests,
   learningDifferences: data.learningDifferences,
+  onboardingCompleted: data.onboardingCompleted ?? false,
+  studentProfile: data.studentProfile,
+  mentorProfile: data.mentorProfile,
 });
 
 const fetchUserProfile = async (firebaseUser: FirebaseUser): Promise<User> => {
@@ -107,6 +113,7 @@ export const signUp = async (data: SignUpData): Promise<User> => {
     name: data.name,
     email: data.email,
     role: null,
+    onboardingCompleted: false,
   };
   await setDoc(userDocRef(credential.user.uid), newUserData, { merge: true });
 
@@ -143,6 +150,15 @@ export const updateUserProfile = async (
   if (Array.isArray(updates.interests)) allowedUpdates.interests = updates.interests;
   if (Array.isArray(updates.learningDifferences)) {
     allowedUpdates.learningDifferences = updates.learningDifferences;
+  }
+  if (typeof updates.onboardingCompleted === 'boolean') {
+    allowedUpdates.onboardingCompleted = updates.onboardingCompleted;
+  }
+  if (updates.studentProfile) {
+    allowedUpdates.studentProfile = updates.studentProfile;
+  }
+  if (updates.mentorProfile) {
+    allowedUpdates.mentorProfile = updates.mentorProfile;
   }
 
   if (Object.keys(allowedUpdates).length > 0) {

@@ -31,11 +31,11 @@ This is NOT a full production build.
 - Basic 1-on-1 messaging
 - Clean, accessible UI
 - Mock data with clear backend integration points
+- Scheduling or calendars
 
 ### EXPLICITLY OUT OF SCOPE
-DO NOT BUILD:
+DO NOT  THIS YET:
 - Payments (Stripe, Apple Pay, etc.)
-- Scheduling or calendars
 - Video or voice calls
 - Parent/guardian dashboards
 - Ratings or reviews
