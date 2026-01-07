@@ -1,12 +1,13 @@
 import React, { ReactNode, useMemo } from 'react';
-import { 
-  SafeAreaView, 
-  ScrollView, 
-  StyleSheet, 
-  View, 
-  StyleProp, 
-  ViewStyle, 
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  View,
+  StyleProp,
+  ViewStyle,
   useWindowDimensions,
+  RefreshControlProps,
 } from 'react-native';
 import type { FlexAlignType } from 'react-native';
 import { colors, spacing } from '../constants/theme';
@@ -30,6 +31,7 @@ interface ScreenProps {
   style?: StyleProp<ViewStyle>;
   centerContent?: boolean;
   keyboardShouldPersistTaps?: 'always' | 'handled' | 'never';
+  refreshControl?: React.ReactElement<RefreshControlProps>;
 }
 
 export const Screen: React.FC<ScreenProps> = ({
@@ -42,6 +44,7 @@ export const Screen: React.FC<ScreenProps> = ({
   style,
   centerContent = false,
   keyboardShouldPersistTaps = 'handled',
+  refreshControl,
 }) => {
   const { width } = useWindowDimensions();
   const resolvedPadding = useMemo(() => {
@@ -86,6 +89,7 @@ export const Screen: React.FC<ScreenProps> = ({
           contentContainerStyle={baseContentStyle}
           keyboardShouldPersistTaps={keyboardShouldPersistTaps}
           showsVerticalScrollIndicator={false}
+          {...(refreshControl ? { refreshControl } : {})}
         >
           {children}
         </ScrollView>

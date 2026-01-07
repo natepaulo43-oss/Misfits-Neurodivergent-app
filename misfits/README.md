@@ -87,7 +87,6 @@ All Firebase calls are stubbed in `/services/`. Look for `TODO` comments indicat
 ## Out of Scope (Phase 1)
 
 - Payments (Stripe, Apple Pay)
-- Scheduling/calendars
 - Video/voice calls
 - Parent dashboards
 - Ratings/reviews

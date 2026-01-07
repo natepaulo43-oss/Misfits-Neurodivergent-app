@@ -28,6 +28,7 @@ export interface StudentProfile {
   age?: number;
   gradeLevel: GradeLevel;
   timezone: string;
+  availabilitySlots?: string[];
   supportGoals: SupportGoal[];
   supportGoalsOther?: string;
   learningStyles: LearningStyle[];
@@ -73,6 +74,7 @@ export interface MentorProfile {
   valuedMenteeTraits?: MenteeTrait[];
   shortBio?: string;
   funFact?: string;
+  acceptingIntroRequests?: boolean;
 }
 
 export interface User {
@@ -95,6 +97,7 @@ export interface Mentor {
   approved: boolean;
   profileImage?: string;
   mentorProfile?: MentorProfile;
+  acceptingIntroRequests?: boolean;
   matchScore?: number;
 }
 
@@ -110,6 +113,30 @@ export interface Book {
   publisher: string;
   publicationDate: string;
   amazonUrl: string;
+}
+
+export interface MentorMatchBreakdown {
+  supportGoals: number;
+  communication: number;
+  availability: number;
+  mentoringStyle: number;
+  neuroExperience: number;
+}
+
+export interface MentorMatchResult {
+  mentor_id: string;
+  mentor_name?: string;
+  compatibility_score: number;
+  match_reasons: string[];
+  breakdown: MentorMatchBreakdown;
+}
+
+export interface MentorMatchMetadata {
+  weights: Record<string, number>;
+  threshold: number;
+  disclaimer?: string;
+  total_considered: number;
+  total_returned: number;
 }
 
 export interface Message {

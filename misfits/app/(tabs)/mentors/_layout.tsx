@@ -12,13 +12,21 @@ export default function MentorsLayout() {
         headerShadowVisible: false,
       }}
     >
-      <Stack.Screen 
-        name="index" 
-        options={{ title: 'Mentors' }} 
+      <Stack.Screen
+        name="index"
+        options={{ title: 'Your Matches' }}
       />
-      <Stack.Screen 
-        name="[id]" 
-        options={{ title: 'Mentor Profile' }} 
+      <Stack.Screen
+        name="browse"
+        options={{ title: 'Browse Mentors' }}
+      />
+      <Stack.Screen
+        name="match-details"
+        options={{ title: 'Why this match?' }}
+      />
+      <Stack.Screen
+        name="[id]"
+        options={{ title: 'Mentor Profile' }}
       />
     </Stack>
   );

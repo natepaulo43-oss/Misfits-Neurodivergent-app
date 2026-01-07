@@ -3,6 +3,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const { matchMentors } = require('./matchingEngine');
 
 /**
  * Central configuration with sensible OWASP-aligned defaults.
@@ -64,6 +65,30 @@ app.use(userLimiter);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.post('/match', (req, res) => {
+  const { student_profile: studentProfile, mentor_profiles: mentorProfiles, options } = req.body || {};
+
+  if (!studentProfile || !Array.isArray(mentorProfiles)) {
+    res.status(400).json({
+      error: 'invalid_request',
+      message: 'student_profile object and mentor_profiles array are required.',
+    });
+    return;
+  }
+
+  try {
+    const result = matchMentors(studentProfile, mentorProfiles, options);
+    res.json(result);
+  } catch (error) {
+    console.error('Match engine error', error);
+    res.status(500).json({
+      error: 'match_engine_failure',
+      message: 'Failed to compute mentor matches.',
+      detail: process.env.NODE_ENV === 'production' ? undefined : error.message,
+    });
+  }
 });
 
 app.use((req, res) => {
