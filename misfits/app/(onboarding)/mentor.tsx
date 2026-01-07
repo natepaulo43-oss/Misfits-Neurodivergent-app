@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import { router } from 'expo-router';
 
 import { Screen, Input, Button } from '../../components';
@@ -12,6 +12,16 @@ import {
   MenteeTrait,
   NeurodivergenceExperience,
 } from '../../types';
+
+const showAlert = (title: string, message: string) => {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') {
+      window.alert(`${title}\n\n${message}`);
+    }
+    return;
+  }
+  Alert.alert(title, message);
+};
 
 const Chip: React.FC<{ label: string; selected: boolean; onPress: () => void }> = ({
   label,
@@ -154,12 +164,12 @@ export default function MentorOnboardingScreen() {
     const missing = requiredValidations.filter(([valid]) => !valid).map(([, label]) => label);
 
     if (missing.length > 0) {
-      Alert.alert('Almost there', `Please complete: ${missing.join(', ')}`);
+      showAlert('Almost there', `Please complete: ${missing.join(', ')}`);
       return;
     }
 
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to continue.');
+      showAlert('Error', 'You must be logged in to continue.');
       return;
     }
 
@@ -193,7 +203,7 @@ export default function MentorOnboardingScreen() {
 
       router.replace('/(tabs)/home');
     } catch (error) {
-      Alert.alert('Error', 'Failed to save your profile. Please try again.');
+      showAlert('Error', 'Failed to save your profile. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -202,7 +212,7 @@ export default function MentorOnboardingScreen() {
   const canSubmit = requiredValidations.every(([valid]) => valid);
 
   return (
-    <Screen scroll align="left">
+    <Screen scroll align="left" keyboardShouldPersistTaps="always">
       <View style={styles.header}>
         <Text style={styles.eyebrow}>Step 2 of 2</Text>
         <Text style={styles.title}>Share your expertise</Text>

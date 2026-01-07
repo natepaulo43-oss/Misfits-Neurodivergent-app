@@ -37,6 +37,26 @@ type FirestoreUserData = {
 
 const userDocRef = (userId: string) => doc(db, 'users', userId);
 
+const removeUndefinedFields = (value: any): any => {
+  if (Array.isArray(value)) {
+    return value.map(item => removeUndefinedFields(item)).filter(item => item !== undefined);
+  }
+
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value).reduce<Record<string, any>>((acc, [key, val]) => {
+      const cleaned = removeUndefinedFields(val);
+      if (cleaned !== undefined) {
+        acc[key] = cleaned;
+      }
+      return acc;
+    }, {});
+
+    return Object.keys(entries).length ? entries : undefined;
+  }
+
+  return value === undefined ? undefined : value;
+};
+
 const buildUserFromData = (
   userId: string,
   data: FirestoreUserData = {},
@@ -161,8 +181,10 @@ export const updateUserProfile = async (
     allowedUpdates.mentorProfile = updates.mentorProfile;
   }
 
-  if (Object.keys(allowedUpdates).length > 0) {
-    await setDoc(userDocRef(userId), allowedUpdates, { merge: true });
+  const cleanedUpdates = removeUndefinedFields(allowedUpdates);
+
+  if (cleanedUpdates && Object.keys(cleanedUpdates).length > 0) {
+    await setDoc(userDocRef(userId), cleanedUpdates, { merge: true });
   }
 
   const snapshot = await getDoc(userDocRef(userId));
