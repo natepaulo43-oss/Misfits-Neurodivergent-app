@@ -29,6 +29,7 @@ interface ScreenProps {
   contentContainerStyle?: StyleProp<ViewStyle>;
   style?: StyleProp<ViewStyle>;
   centerContent?: boolean;
+  keyboardShouldPersistTaps?: 'always' | 'handled' | 'never';
 }
 
 export const Screen: React.FC<ScreenProps> = ({
@@ -40,6 +41,7 @@ export const Screen: React.FC<ScreenProps> = ({
   contentContainerStyle,
   style,
   centerContent = false,
+  keyboardShouldPersistTaps = 'handled',
 }) => {
   const { width } = useWindowDimensions();
   const resolvedPadding = useMemo(() => {
@@ -82,7 +84,7 @@ export const Screen: React.FC<ScreenProps> = ({
       {scroll ? (
         <ScrollView
           contentContainerStyle={baseContentStyle}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps={keyboardShouldPersistTaps}
           showsVerticalScrollIndicator={false}
         >
           {children}

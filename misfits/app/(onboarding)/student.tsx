@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import { router } from 'expo-router';
 
 import { Screen, Input, Button } from '../../components';
@@ -73,6 +73,16 @@ const neurodivergenceOptions: { label: string; value: NeurodivergenceOption }[] 
   { label: 'Other', value: 'other' },
   { label: 'Prefer not to say', value: 'prefer_not_to_say' },
 ];
+
+const showAlert = (title: string, message: string) => {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') {
+      window.alert(`${title}\n\n${message}`);
+    }
+    return;
+  }
+  Alert.alert(title, message);
+};
 
 const Chip: React.FC<{ label: string; selected: boolean; onPress: () => void }> = ({
   label,
@@ -158,12 +168,12 @@ export default function StudentOnboardingScreen() {
       .map(([, label]) => label);
 
     if (missingFields.length > 0) {
-      Alert.alert('Almost there', `Please complete: ${missingFields.join(', ')}`);
+      showAlert('Almost there', `Please complete: ${missingFields.join(', ')}`);
       return;
     }
 
     if (!user) {
-      Alert.alert('Error', 'You must be logged in to continue.');
+      showAlert('Error', 'You must be logged in to continue.');
       return;
     }
 
@@ -197,16 +207,14 @@ export default function StudentOnboardingScreen() {
 
       router.replace('/(tabs)/home');
     } catch (error) {
-      Alert.alert('Error', 'Failed to save your profile. Please try again.');
+      showAlert('Error', 'Failed to save your profile. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const canSubmit = requiredValidations.every(([valid]) => valid);
-
   return (
-    <Screen scroll align="left">
+    <Screen scroll align="left" keyboardShouldPersistTaps="always">
       <View style={styles.header}>
         <Text style={styles.eyebrow}>Step 2 of 2</Text>
         <Text style={styles.title}>Tell us about you</Text>
@@ -331,7 +339,7 @@ export default function StudentOnboardingScreen() {
                   return;
                 }
                 if (mentorTraitLimitReached) {
-                  Alert.alert('Limit reached', 'Please deselect one trait before adding another.');
+                  showAlert('Limit reached', 'Please deselect one trait before adding another.');
                   return;
                 }
                 toggleValue(option.value, mentorTraits, setMentorTraits);
