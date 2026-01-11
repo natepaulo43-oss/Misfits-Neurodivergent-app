@@ -1,8 +1,12 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants/theme';
+import { useAuth } from '../../context/AuthContext';
 
 export default function TabLayout() {
+  const { user } = useAuth();
+  const mentorTabLabel = user?.role === 'mentor' ? 'Your requests' : 'Mentors';
+
   return (
     <Tabs
       screenOptions={{
@@ -31,7 +35,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="mentors"
         options={{
-          title: 'Mentors',
+          title: mentorTabLabel,
+          tabBarLabel: mentorTabLabel,
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
