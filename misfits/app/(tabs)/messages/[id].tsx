@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -11,12 +11,11 @@ import {
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LoadingSpinner, Screen } from '../../../components';
+import { LoadingSpinner, Screen, EmptyState } from '../../../components';
 import { colors, spacing, typography, borderRadius } from '../../../constants/theme';
-import { Message } from '../../../types';
-import { fetchMessages, sendMessage } from '../../../services/messages';
+import { Message, MessageThread, ThreadParticipantProfile } from '../../../types';
+import { fetchMessages, fetchThreadById, sendMessage } from '../../../services/messages';
 import { useAuth } from '../../../context/AuthContext';
-import { mockThreads } from '../../../data/mockMessages';
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,23 +24,55 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(true);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
+  const [thread, setThread] = useState<MessageThread | null>(null);
+  const [otherParticipant, setOtherParticipant] = useState<ThreadParticipantProfile | null>(null);
+  const [otherUserId, setOtherUserId] = useState<string>('');
   const flatListRef = useRef<FlatList>(null);
 
-  // Get the other participant's ID from the thread
-  const thread = mockThreads.find(t => t.id === id);
-  const otherUserId = thread?.participantIds.find(pid => pid !== user?.id) || '';
+  useEffect(() => {
+    loadConversation();
+  }, [id, user?.id]);
 
   useEffect(() => {
-    loadMessages();
-  }, [id]);
+    if (!thread || !user?.id) {
+      setOtherParticipant(null);
+      setOtherUserId('');
+      return;
+    }
 
-  const loadMessages = async () => {
-    if (!id) return;
+    const resolved = resolveOtherParticipant(thread, user.id);
+    setOtherParticipant(resolved);
+    setOtherUserId(resolved?.id ?? '');
+  }, [thread, user?.id]);
+
+  const resolveOtherParticipant = (threadData: MessageThread, currentUserId: string): ThreadParticipantProfile | null => {
+    if (threadData.participants) {
+      const other = Object.values(threadData.participants).find(participant => participant.id !== currentUserId);
+      if (other) return other;
+    }
+
+    const otherId = threadData.participantIds.find(pid => pid !== currentUserId);
+    const otherNameIndex = threadData.participantIds.findIndex(pid => pid === otherId);
+    const fallbackName =
+      otherNameIndex >= 0 ? threadData.participantNames[otherNameIndex] ?? 'Conversation' : 'Conversation';
+
+    return otherId
+      ? {
+          id: otherId,
+          name: fallbackName,
+        }
+      : null;
+  };
+
+  const loadConversation = async () => {
+    if (!id || typeof id !== 'string') return;
     try {
-      const data = await fetchMessages(id);
-      setMessages(data);
+      setLoading(true);
+      const [threadData, threadMessages] = await Promise.all([fetchThreadById(id), fetchMessages(id)]);
+      setThread(threadData);
+      setMessages(threadMessages);
     } catch (error) {
-      console.error('Failed to load messages:', error);
+      console.error('Failed to load conversation:', error);
     } finally {
       setLoading(false);
     }
@@ -49,6 +80,10 @@ export default function ChatScreen() {
 
   const handleSend = async () => {
     if (!inputText.trim() || !user || !id || sending) return;
+    if (!otherUserId) {
+      console.warn('No recipient found for this conversation.');
+      return;
+    }
 
     setSending(true);
     try {
@@ -96,12 +131,31 @@ export default function ChatScreen() {
     );
   };
 
-  if (loading) {
-    return <LoadingSpinner fullScreen />;
-  }
+  const conversationTitle = useMemo(() => {
+    if (otherParticipant?.name) {
+      return otherParticipant.name;
+    }
+    if (thread?.participantNames && user?.id) {
+      const otherIndex = thread.participantIds.findIndex(pid => pid !== user.id);
+      return thread.participantNames[otherIndex] || 'Conversation';
+    }
+    return 'Conversation';
+  }, [otherParticipant?.name, thread?.participantNames, thread?.participantIds, user?.id]);
 
-  return (
-    <Screen padding="none">
+  const renderContent = () => {
+    if (loading) {
+      return <LoadingSpinner fullScreen />;
+    }
+
+    if (!thread) {
+      return (
+        <Screen>
+          <EmptyState title="Conversation unavailable" message="We couldn’t find this chat thread." />
+        </Screen>
+      );
+    }
+
+    return (
       <KeyboardAvoidingView 
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -140,13 +194,35 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+    );
+  };
+
+  return (
+    <Screen padding="none">
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{conversationTitle}</Text>
+      </View>
+      {renderContent()}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  header: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.divider,
+    backgroundColor: colors.surface,
+  },
+  headerTitle: {
+    ...typography.subtitle,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
   keyboardView: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   messagesList: {
     padding: spacing.md,
