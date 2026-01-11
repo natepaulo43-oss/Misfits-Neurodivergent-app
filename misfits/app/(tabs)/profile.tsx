@@ -4,95 +4,25 @@ import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { Avatar, Button, Screen } from '../../components';
 import { colors, spacing, typography } from '../../constants/theme';
-import { StudentProfile, MentorProfile, GradeLevel, MeetingFrequency } from '../../types';
 
-const formatToken = (value?: string | null) => {
-  if (!value) return 'Not set';
-  return value
-    .split('_')
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-};
-
-const formatList = (value?: string[] | null) => {
-  if (!value || value.length === 0) return 'Not set';
-  return value.map(item => formatToken(item)).join(', ');
-};
-
-const InfoRow: React.FC<{ label: string; value?: string }> = ({ label, value }) => (
+const InfoRow: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => (
   <View style={styles.field}>
     <Text style={styles.fieldLabel}>{label}</Text>
     <Text style={styles.fieldValue}>{value ?? 'Not set'}</Text>
   </View>
 );
 
-const getGradeLabel = (grade: GradeLevel | undefined) => (grade ? formatToken(grade) : 'Not set');
-const getMeetingFrequencyLabel = (value: MeetingFrequency | undefined) =>
-  value ? formatToken(value) : 'Not set';
-
-const StudentSection: React.FC<{ profile?: StudentProfile }> = ({ profile }) => {
-  if (!profile) return null;
-
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Student Profile</Text>
-      <InfoRow label="Full name" value={profile.fullName} />
-      <InfoRow label="Age" value={profile.age ? profile.age.toString() : 'Not set'} />
-      <InfoRow label="Grade / Level" value={getGradeLabel(profile.gradeLevel)} />
-      <InfoRow label="Time zone" value={profile.timezone || 'Not set'} />
-      <InfoRow label="Support goals" value={formatList(profile.supportGoals)} />
-      {profile.supportGoals?.includes('other') && (
-        <InfoRow label="Other support needs" value={profile.supportGoalsOther || 'Not set'} />
-      )}
-      <InfoRow label="Learning styles" value={formatList(profile.learningStyles)} />
-      <InfoRow label="Communication methods" value={formatList(profile.communicationMethods)} />
-      <InfoRow
-        label="Meeting frequency"
-        value={getMeetingFrequencyLabel(profile.meetingFrequency)}
-      />
-      <InfoRow label="Preferred mentor traits" value={formatList(profile.mentorTraits)} />
-      <InfoRow label="Guidance style" value={formatToken(profile.guidanceStyle)} />
-      <InfoRow
-        label="Communication notes"
-        value={profile.preferredCommunicationNotes || 'Not set'}
-      />
-      <InfoRow label="Neurodivergence" value={formatToken(profile.neurodivergence)} />
-      <InfoRow label="Areas of strength" value={profile.strengthsText || 'Not set'} />
-      <InfoRow label="Areas of challenge" value={profile.challengesText || 'Not set'} />
-    </View>
-  );
-};
-
-const MentorSection: React.FC<{ profile?: MentorProfile }> = ({ profile }) => {
-  if (!profile) return null;
-
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Mentor Profile</Text>
-      <InfoRow label="Full name" value={profile.fullName} />
-      <InfoRow label="Age" value={profile.age ? profile.age.toString() : 'Not set'} />
-      <InfoRow label="Time zone" value={profile.timezone || 'Not set'} />
-      <InfoRow label="Current role" value={profile.currentRole} />
-      <InfoRow label="Expertise areas" value={formatList(profile.expertiseAreas)} />
-      <InfoRow label="Mentee age range" value={formatList(profile.menteeAgeRange)} />
-      <InfoRow label="Focus areas" value={formatList(profile.focusAreas)} />
-      <InfoRow
-        label="Neurodivergence experience"
-        value={formatToken(profile.neurodivergenceExperience)}
-      />
-      <InfoRow label="Communication methods" value={formatList(profile.communicationMethods)} />
-      <InfoRow label="Availability" value={formatList(profile.availabilitySlots)} />
-      <InfoRow label="Mentoring approach" value={formatList(profile.mentoringApproach)} />
-      <InfoRow label="Valued mentee traits" value={formatList(profile.valuedMenteeTraits)} />
-      <InfoRow label="Short bio" value={profile.shortBio || 'Not set'} />
-      <InfoRow label="Fun fact" value={profile.funFact || 'Not set'} />
-    </View>
-  );
-};
+const getRoleLabel = (role?: string | null) =>
+  role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Not set';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const role = user?.role;
+  const onboardingCompleted = Boolean(user?.onboardingCompleted);
+  const statusLabel = onboardingCompleted ? 'Active' : 'Incomplete information';
+  const statusDescription = onboardingCompleted
+    ? 'Your profile is ready to be shown to matches. Keep your info up to date so we can connect you quickly.'
+    : 'To be shown and matched, finish filling in the remaining profile details. We need a complete profile to introduce you.';
 
   const performLogout = async () => {
     await logout();
@@ -136,16 +66,40 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <InfoRow label="Role" value={role ? role : 'Not set'} />
-          <InfoRow label="Onboarding status" value={user?.onboardingCompleted ? 'Complete' : 'Pending'} />
+          <Text style={styles.sectionTitle}>Profile overview</Text>
+          <View
+            style={[
+              styles.statusPill,
+              onboardingCompleted ? styles.statusPillComplete : styles.statusPillPending,
+            ]}
+          >
+            <Text
+              style={[
+                styles.statusPillText,
+                onboardingCompleted ? styles.statusPillTextComplete : styles.statusPillTextPending,
+              ]}
+            >
+              {statusLabel}
+            </Text>
+          </View>
+          <Text style={styles.statusDescription}>{statusDescription}</Text>
+          <InfoRow label="Account name" value={user?.name} />
+          <InfoRow label="Role" value={getRoleLabel(role)} />
+          <InfoRow label="Status" value={onboardingCompleted ? 'Active' : 'Needs attention'} />
         </View>
 
-        {role === 'student' && <StudentSection profile={user?.studentProfile} />}
-        {role === 'mentor' && <MentorSection profile={user?.mentorProfile} />}
+        {!onboardingCompleted && (
+          <View style={styles.noticeCard}>
+            <Text style={styles.noticeTitle}>Complete your profile</Text>
+            <Text style={styles.noticeBody}>
+              The more we know about you, the faster we can find the right match. Add any missing
+              details before requesting or accepting introductions.
+            </Text>
+          </View>
+        )}
 
         <Button
-          title={user?.onboardingCompleted ? 'Update onboarding profile' : 'Complete onboarding setup'}
+          title={onboardingCompleted ? 'Edit full profile' : 'Complete profile information'}
           onPress={handleEditOnboarding}
           style={styles.actionButton}
         />
@@ -194,6 +148,34 @@ const styles = StyleSheet.create({
     ...typography.subtitle,
     color: colors.textPrimary,
   },
+  statusPill: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  statusPillComplete: {
+    backgroundColor: '#E7F8EE',
+  },
+  statusPillPending: {
+    backgroundColor: '#FFF6EC',
+  },
+  statusPillText: {
+    ...typography.bodySmall,
+    fontWeight: '600',
+  },
+  statusPillTextComplete: {
+    color: colors.success,
+  },
+  statusPillTextPending: {
+    color: '#B26100',
+  },
+  statusDescription: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
   field: {
     marginBottom: spacing.sm,
   },
@@ -205,6 +187,20 @@ const styles = StyleSheet.create({
   fieldValue: {
     ...typography.body,
     color: colors.textPrimary,
+  },
+  noticeCard: {
+    backgroundColor: '#F4F7FB',
+    borderRadius: 16,
+    padding: spacing.lg,
+    gap: spacing.xs,
+  },
+  noticeTitle: {
+    ...typography.subtitle,
+    color: colors.textPrimary,
+  },
+  noticeBody: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
   },
   actionButton: {
     marginTop: spacing.md,
