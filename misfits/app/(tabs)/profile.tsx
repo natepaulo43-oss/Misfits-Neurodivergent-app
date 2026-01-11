@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { Avatar, Button, Screen } from '../../components';
-import { colors, spacing, typography } from '../../constants/theme';
+import { Avatar, Button, Input, Screen } from '../../components';
+import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 
 const InfoRow: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => (
   <View style={styles.field}>
@@ -16,13 +16,63 @@ const getRoleLabel = (role?: string | null) =>
   role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Not set';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
   const role = user?.role;
   const onboardingCompleted = Boolean(user?.onboardingCompleted);
   const statusLabel = onboardingCompleted ? 'Active' : 'Incomplete information';
   const statusDescription = onboardingCompleted
     ? 'Your profile is ready to be shown to matches. Keep your info up to date so we can connect you quickly.'
     : 'To be shown and matched, finish filling in the remaining profile details. We need a complete profile to introduce you.';
+
+  const [appealText, setAppealText] = useState(user?.mentorApplicationAppealText ?? '');
+  const [appealSubmitting, setAppealSubmitting] = useState(false);
+
+  useEffect(() => {
+    setAppealText(user?.mentorApplicationAppealText ?? '');
+  }, [user?.mentorApplicationAppealText]);
+
+  const mentorStatus = user?.mentorApplicationStatus;
+  const showMentorStatus =
+    user?.pendingRole === 'mentor' ||
+    mentorStatus === 'submitted' ||
+    mentorStatus === 'rejected' ||
+    mentorStatus === 'draft';
+
+  const mentorStatusCopy = useMemo(() => {
+    switch (mentorStatus) {
+      case 'submitted':
+        return 'Your mentor application is under review. Our admins verify every adult who works with minors.';
+      case 'draft':
+        return 'Finish the mentor onboarding steps to submit your application for review.';
+      case 'rejected':
+        return 'Your mentor application was not approved. You can submit an appeal for the admin team to review.';
+      default:
+        return 'Mentor request pending. We will notify you once a decision is made.';
+    }
+  }, [mentorStatus]);
+
+  const mentorAdminNotes = user?.mentorApplicationAdminNotes;
+
+  const handleAppealSubmit = async () => {
+    const trimmed = appealText.trim();
+    if (!trimmed) {
+      Alert.alert('Add details', 'Please explain why you are appealing the decision.');
+      return;
+    }
+
+    setAppealSubmitting(true);
+    try {
+      await updateProfile({
+        mentorApplicationAppealText: trimmed,
+        mentorApplicationAppealSubmittedAt: new Date().toISOString(),
+      });
+      Alert.alert('Appeal submitted', 'An admin will review your statement and follow up.');
+    } catch (error) {
+      Alert.alert('Unable to submit appeal', 'Please try again in a few minutes.');
+    } finally {
+      setAppealSubmitting(false);
+    }
+  };
 
   const performLogout = async () => {
     await logout();
@@ -87,6 +137,44 @@ export default function ProfileScreen() {
           <InfoRow label="Role" value={getRoleLabel(role)} />
           <InfoRow label="Status" value={onboardingCompleted ? 'Active' : 'Needs attention'} />
         </View>
+
+        {showMentorStatus && (
+          <View style={styles.statusCard}>
+            <View style={styles.statusCardHeader}>
+              <Text style={styles.statusCardTitle}>Mentor approval status</Text>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusBadgeText}>
+                  {mentorStatus ? mentorStatus.replace('_', ' ') : 'pending'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.statusCardCopy}>{mentorStatusCopy}</Text>
+            {mentorAdminNotes ? (
+              <View style={styles.noteBox}>
+                <Text style={styles.noteLabel}>Admin notes</Text>
+                <Text style={styles.noteText}>{mentorAdminNotes}</Text>
+              </View>
+            ) : null}
+            {mentorStatus === 'rejected' ? (
+              <View style={styles.appealSection}>
+                <Text style={styles.appealTitle}>Submit an appeal</Text>
+                <Input
+                  placeholder="Explain any additional context for the review team."
+                  value={appealText}
+                  onChangeText={setAppealText}
+                  multiline
+                  numberOfLines={4}
+                  containerStyle={styles.appealInput}
+                />
+                <Button
+                  title="Send appeal to admin team"
+                  onPress={handleAppealSubmit}
+                  loading={appealSubmitting}
+                />
+              </View>
+            ) : null}
+          </View>
+        )}
 
         {!onboardingCompleted && (
           <View style={styles.noticeCard}>
@@ -207,5 +295,61 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     marginTop: spacing.md,
+  },
+  statusCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  statusCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusCardTitle: {
+    ...typography.subtitle,
+    color: colors.textPrimary,
+  },
+  statusBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 999,
+    backgroundColor: '#F4F7FB',
+  },
+  statusBadgeText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  statusCardCopy: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  noteBox: {
+    backgroundColor: '#FFF6EC',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  noteLabel: {
+    ...typography.caption,
+    color: '#B26100',
+    textTransform: 'uppercase',
+  },
+  noteText: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+  },
+  appealSection: {
+    gap: spacing.sm,
+  },
+  appealTitle: {
+    ...typography.subtitle,
+    color: colors.textPrimary,
+  },
+  appealInput: {
+    marginBottom: 0,
   },
 });

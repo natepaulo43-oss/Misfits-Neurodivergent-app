@@ -10,6 +10,7 @@ interface AuthContextType {
   signUp: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setUserRole: (role: UserRole) => Promise<void>;
+  requestMentorAccess: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
 }
 
@@ -61,7 +62,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const setUserRole = async (role: UserRole) => {
     if (!user) return;
     await authService.updateUserRole(user.id, role);
-    setUser({ ...user, role });
+    setUser({ ...user, role, pendingRole: null, mentorApplicationStatus: role === 'mentor' ? 'approved' : user.mentorApplicationStatus });
+  };
+
+  const requestMentorAccess = async () => {
+    if (!user) return;
+    const updatedUser = await authService.updateUserProfile(user.id, {
+      pendingRole: 'mentor',
+      mentorApplicationStatus: 'draft',
+    });
+    setUser(updatedUser);
   };
 
   const updateProfile = async (updates: Partial<User>) => {
@@ -80,6 +90,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         signUp,
         logout,
         setUserRole,
+        requestMentorAccess,
         updateProfile,
       }}
     >

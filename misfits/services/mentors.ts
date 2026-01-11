@@ -10,6 +10,7 @@ type MentorDocument = {
   approved?: boolean;
   profileImage?: string;
   mentorProfile?: MentorProfile;
+  mentorMatchingDisabled?: boolean;
 };
 
 const mentorsCollection = collection(db, 'users');
@@ -21,8 +22,9 @@ const mapDocToMentor = (docId: string, data: MentorDocument): Mentor | null => {
 
   const approved = data.approved !== false;
   const acceptingIntroRequests = data.mentorProfile.acceptingIntroRequests !== false;
+  const matchingDisabled = data.mentorMatchingDisabled === true;
 
-  if (!approved) {
+  if (!approved || matchingDisabled) {
     return null;
   }
 

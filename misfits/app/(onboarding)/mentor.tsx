@@ -186,6 +186,8 @@ export default function MentorOnboardingScreen() {
 
     const ageNumber = Number(age);
 
+    const submissionTimestamp = new Date().toISOString();
+
     setSubmitting(true);
     try {
       await updateProfile({
@@ -212,9 +214,12 @@ export default function MentorOnboardingScreen() {
           funFact: funFact.trim() || undefined,
         },
         onboardingCompleted: true,
+        pendingRole: 'mentor',
+        mentorApplicationStatus: 'submitted',
+        mentorApplicationSubmittedAt: submissionTimestamp,
       });
 
-      router.replace('/(tabs)/home');
+      router.replace('/(onboarding)/mentor-submitted');
     } catch (error) {
       showAlert('Error', 'Failed to save your profile. Please try again.');
     } finally {

@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 
 import { db } from './firebase';
+import { getCurrentUser } from './auth';
 import { Message, MessageThread, ThreadParticipantProfile } from '../types';
 
 type ThreadDocument = MessageThread & {
@@ -46,6 +47,21 @@ const mapThreadDoc = (docSnapshot: DocumentSnapshot<ThreadDocument>): MessageThr
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   };
+};
+
+const ensureMessagingAllowed = (actingUserId: string) => {
+  const currentUser = getCurrentUser();
+  if (!currentUser || currentUser.id !== actingUserId) {
+    throw new Error('You must be signed in to send messages.');
+  }
+
+  if (currentUser.accountSuspended) {
+    throw new Error('Your account is suspended. Messaging is unavailable.');
+  }
+
+  if (currentUser.messagingDisabled) {
+    throw new Error('Messaging has been disabled for your account.');
+  }
 };
 
 const sanitizeMessage = (text: string): string => {
@@ -124,6 +140,8 @@ export const sendMessage = async (
     throw new Error('Invalid message parameters');
   }
 
+  ensureMessagingAllowed(fromUserId);
+
   const sanitized = sanitizeMessage(text);
   if (!sanitized) {
     throw new Error('Message cannot be empty');
@@ -172,6 +190,8 @@ export const startNewThread = async (
   if (!currentUserId || !otherUserId) {
     throw new Error('Invalid participants');
   }
+
+  ensureMessagingAllowed(currentUserId);
 
   const participantIds = [currentUserId, otherUserId];
   const participantNames = [currentUserName, otherUserName];

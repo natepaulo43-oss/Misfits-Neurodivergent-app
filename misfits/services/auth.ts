@@ -9,7 +9,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 import { auth, db } from './firebase';
-import { User, UserRole } from '../types';
+import { MentorApplicationStatus, User, UserRole } from '../types';
 
 let currentUser: User | null = null;
 
@@ -28,11 +28,21 @@ type FirestoreUserData = {
   name?: string;
   email?: string;
   role?: UserRole | null;
+  pendingRole?: UserRole | null;
+  mentorApplicationStatus?: MentorApplicationStatus;
+  mentorApplicationSubmittedAt?: string;
+  mentorApplicationAdminNotes?: string;
+  mentorApplicationAppealText?: string;
+  mentorApplicationAppealSubmittedAt?: string;
   interests?: string[];
   learningDifferences?: string[];
   onboardingCompleted?: boolean;
   studentProfile?: User['studentProfile'];
   mentorProfile?: User['mentorProfile'];
+  accountSuspended?: boolean;
+  suspensionReason?: string;
+  messagingDisabled?: boolean;
+  mentorMatchingDisabled?: boolean;
 };
 
 const userDocRef = (userId: string) => doc(db, 'users', userId);
@@ -66,11 +76,21 @@ const buildUserFromData = (
   name: data.name ?? fallback?.displayName ?? '',
   email: data.email ?? fallback?.email ?? '',
   role: typeof data.role === 'string' ? data.role : null,
+  pendingRole: typeof data.pendingRole === 'string' ? data.pendingRole : null,
+  mentorApplicationStatus: data.mentorApplicationStatus ?? 'not_requested',
+  mentorApplicationSubmittedAt: data.mentorApplicationSubmittedAt,
+  mentorApplicationAdminNotes: data.mentorApplicationAdminNotes,
+  mentorApplicationAppealText: data.mentorApplicationAppealText,
+  mentorApplicationAppealSubmittedAt: data.mentorApplicationAppealSubmittedAt,
   interests: data.interests,
   learningDifferences: data.learningDifferences,
   onboardingCompleted: data.onboardingCompleted ?? false,
   studentProfile: data.studentProfile,
   mentorProfile: data.mentorProfile,
+  accountSuspended: data.accountSuspended ?? false,
+  suspensionReason: data.suspensionReason,
+  messagingDisabled: data.messagingDisabled ?? false,
+  mentorMatchingDisabled: data.mentorMatchingDisabled ?? false,
 });
 
 const fetchUserProfile = async (firebaseUser: FirebaseUser): Promise<User> => {
@@ -134,6 +154,8 @@ export const signUp = async (data: SignUpData): Promise<User> => {
     email: data.email,
     role: null,
     onboardingCompleted: false,
+    pendingRole: null,
+    mentorApplicationStatus: 'not_requested',
   };
   await setDoc(userDocRef(credential.user.uid), newUserData, { merge: true });
 
@@ -149,10 +171,27 @@ export const logout = async (): Promise<void> => {
 export const getCurrentUser = (): User | null => currentUser;
 
 export const updateUserRole = async (userId: string, role: UserRole): Promise<void> => {
-  await setDoc(userDocRef(userId), { role }, { merge: true });
+  const updates: FirestoreUserData = {
+    role,
+    pendingRole: null,
+  };
+
+  if (role === 'mentor') {
+    updates.mentorApplicationStatus = 'approved';
+  } else {
+    updates.mentorApplicationStatus = role === 'student' ? 'not_requested' : undefined;
+    updates.mentorApplicationSubmittedAt = undefined;
+  }
+
+  await setDoc(userDocRef(userId), removeUndefinedFields(updates) ?? {}, { merge: true });
 
   if (currentUser && currentUser.id === userId) {
-    currentUser = { ...currentUser, role };
+    currentUser = {
+      ...currentUser,
+      role,
+      pendingRole: null,
+      mentorApplicationStatus: updates.mentorApplicationStatus ?? currentUser.mentorApplicationStatus,
+    };
   }
 };
 
@@ -167,6 +206,33 @@ export const updateUserProfile = async (
   if (typeof updates.role === 'string' || updates.role === null) {
     allowedUpdates.role = updates.role as UserRole | null;
   }
+  if (typeof updates.pendingRole === 'string' || updates.pendingRole === null) {
+    allowedUpdates.pendingRole = updates.pendingRole === 'mentor' ? 'mentor' : null;
+  }
+  if (typeof updates.mentorApplicationStatus === 'string') {
+    const allowedStatuses: MentorApplicationStatus[] = [
+      'not_requested',
+      'draft',
+      'submitted',
+      'approved',
+      'rejected',
+    ];
+    if (allowedStatuses.includes(updates.mentorApplicationStatus as MentorApplicationStatus)) {
+      allowedUpdates.mentorApplicationStatus = updates.mentorApplicationStatus as MentorApplicationStatus;
+    }
+  }
+  if (typeof updates.mentorApplicationSubmittedAt === 'string') {
+    allowedUpdates.mentorApplicationSubmittedAt = updates.mentorApplicationSubmittedAt;
+  }
+  if (typeof updates.mentorApplicationAdminNotes === 'string') {
+    allowedUpdates.mentorApplicationAdminNotes = updates.mentorApplicationAdminNotes;
+  }
+  if (typeof updates.mentorApplicationAppealText === 'string') {
+    allowedUpdates.mentorApplicationAppealText = updates.mentorApplicationAppealText;
+  }
+  if (typeof updates.mentorApplicationAppealSubmittedAt === 'string') {
+    allowedUpdates.mentorApplicationAppealSubmittedAt = updates.mentorApplicationAppealSubmittedAt;
+  }
   if (Array.isArray(updates.interests)) allowedUpdates.interests = updates.interests;
   if (Array.isArray(updates.learningDifferences)) {
     allowedUpdates.learningDifferences = updates.learningDifferences;
@@ -179,6 +245,18 @@ export const updateUserProfile = async (
   }
   if (updates.mentorProfile) {
     allowedUpdates.mentorProfile = updates.mentorProfile;
+  }
+  if (typeof updates.accountSuspended === 'boolean') {
+    allowedUpdates.accountSuspended = updates.accountSuspended;
+  }
+  if (typeof updates.suspensionReason === 'string') {
+    allowedUpdates.suspensionReason = updates.suspensionReason;
+  }
+  if (typeof updates.messagingDisabled === 'boolean') {
+    allowedUpdates.messagingDisabled = updates.messagingDisabled;
+  }
+  if (typeof updates.mentorMatchingDisabled === 'boolean') {
+    allowedUpdates.mentorMatchingDisabled = updates.mentorMatchingDisabled;
   }
 
   const cleanedUpdates = removeUndefinedFields(allowedUpdates);
