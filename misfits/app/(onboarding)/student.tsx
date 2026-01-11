@@ -110,6 +110,14 @@ const toggleValue = <T,>(value: T, list: T[], setter: (next: T[]) => void) => {
   setter(list.includes(value) ? list.filter(item => item !== value) : [...list, value]);
 };
 
+const detectTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return undefined;
+  }
+};
+
 export default function StudentOnboardingScreen() {
   const { user, updateProfile } = useAuth();
 
@@ -118,7 +126,8 @@ export default function StudentOnboardingScreen() {
   const [gradeLevel, setGradeLevel] = useState<GradeLevel>(
     user?.studentProfile?.gradeLevel || 'middle_school',
   );
-  const [timezone, setTimezone] = useState(user?.studentProfile?.timezone || '');
+  const [locationCity, setLocationCity] = useState(user?.studentProfile?.locationCity || '');
+  const [locationState, setLocationState] = useState(user?.studentProfile?.locationState || '');
   const [supportGoals, setSupportGoals] = useState<SupportGoal[]>(
     user?.studentProfile?.supportGoals || [],
   );
@@ -149,13 +158,15 @@ export default function StudentOnboardingScreen() {
   const [strengthsText, setStrengthsText] = useState(user?.studentProfile?.strengthsText || '');
   const [challengesText, setChallengesText] = useState(user?.studentProfile?.challengesText || '');
   const [submitting, setSubmitting] = useState(false);
+  const detectedTimezone = useMemo(() => detectTimezone(), []);
 
   const mentorTraitLimitReached = useMemo(() => mentorTraits.length >= 3, [mentorTraits.length]);
 
   const requiredValidations = [
     [fullName.trim().length > 0, 'Full name'],
     [age.trim().length > 0 && !Number.isNaN(Number(age)), 'Age'],
-    [timezone.trim().length > 0, 'Time zone'],
+    [locationCity.trim().length > 0, 'City'],
+    [locationState.trim().length > 0, 'State'],
     [supportGoals.length > 0, 'At least one support goal'],
     [learningStyles.length > 0, 'Learning style'],
     [communicationMethods.length > 0, 'Communication preference'],
@@ -187,7 +198,9 @@ export default function StudentOnboardingScreen() {
           fullName: fullName.trim(),
           age: Number.isNaN(ageNumber) ? undefined : ageNumber,
           gradeLevel,
-          timezone: timezone.trim(),
+          locationCity: locationCity.trim(),
+          locationState: locationState.trim(),
+          timezone: user?.studentProfile?.timezone || detectedTimezone,
           supportGoals,
           supportGoalsOther: supportGoals.includes('other')
             ? supportGoalsOther.trim() || undefined
@@ -249,10 +262,16 @@ export default function StudentOnboardingScreen() {
           ))}
         </View>
         <Input
-          label="Location / Time zone *"
-          value={timezone}
-          onChangeText={setTimezone}
-          placeholder="e.g., PST (UTC-8)"
+          label="City *"
+          value={locationCity}
+          onChangeText={setLocationCity}
+          placeholder="e.g., Los Angeles"
+        />
+        <Input
+          label="State / Region *"
+          value={locationState}
+          onChangeText={setLocationState}
+          placeholder="e.g., CA"
         />
       </Section>
 

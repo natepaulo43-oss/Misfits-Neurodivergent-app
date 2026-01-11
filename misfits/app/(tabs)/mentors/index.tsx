@@ -3,11 +3,12 @@ import { View, Text, StyleSheet, Alert, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import { Avatar, Tag, Button, Card, EmptyState, LoadingSpinner, Screen } from '../../../components';
 import { colors, spacing, typography, borderRadius } from '../../../constants/theme';
-import { Mentor, MentorMatchResult, MentorMatchMetadata } from '../../../types';
+import { Mentor, MentorMatchResult, MentorMatchMetadata, MessageThread } from '../../../types';
 import { useAuth } from '../../../context/AuthContext';
 import { fetchMentors } from '../../../services/mentors';
 import { fetchMentorMatches } from '../../../services/matching';
-import { startNewThread } from '../../../services/messages';
+import { fetchThreads, startNewThread } from '../../../services/messages';
+import { getOtherParticipantName } from '../../../data/mockMessages';
 
 const MATCH_THRESHOLD_STRONG = 4;
 const MATCH_THRESHOLD_GOOD = 2;
@@ -20,16 +21,23 @@ const determineFitLabel = (match: MentorMatchResult): 'Strong Fit' | 'Good Fit' 
 };
 
 export default function MentorMatchesScreen() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [mentors, setMentors] = useState<Mentor[]>([]);
   const [matches, setMatches] = useState<MentorMatchResult[]>([]);
   const [metadata, setMetadata] = useState<MentorMatchMetadata | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [matchesLoading, setMatchesLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [matchesError, setMatchesError] = useState<string | null>(null);
   const [requestingIntroId, setRequestingIntroId] = useState<string | null>(null);
+  const [introThreads, setIntroThreads] = useState<MessageThread[]>([]);
+  const [introLoading, setIntroLoading] = useState(true);
+  const [introRefreshing, setIntroRefreshing] = useState(false);
+  const [introError, setIntroError] = useState<string | null>(null);
+  const [updatingIntroStatus, setUpdatingIntroStatus] = useState(false);
 
   const hasStudentProfile = Boolean(user?.studentProfile);
+  const isMentor = user?.role === 'mentor';
+  const acceptingIntroRequests = user?.mentorProfile?.acceptingIntroRequests !== false;
 
   const mentorLookup = useMemo(() => {
     return mentors.reduce<Record<string, Mentor>>((acc, mentor) => {
@@ -39,17 +47,22 @@ export default function MentorMatchesScreen() {
   }, [mentors]);
 
   useEffect(() => {
-    loadMatches();
-  }, []);
+    if (!user) return;
+    if (isMentor) {
+      loadIntroRequests();
+    } else {
+      loadMatches();
+    }
+  }, [isMentor, user?.studentProfile]);
 
   const loadMatches = async () => {
     if (!user || !user.studentProfile) {
-      setLoading(false);
+      setMatchesLoading(false);
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    setMatchesLoading(true);
+    setMatchesError(null);
 
     try {
       const mentorData = await fetchMentors();
@@ -61,9 +74,9 @@ export default function MentorMatchesScreen() {
       setMetadata(result.metadata);
     } catch (err) {
       console.error('Failed to load matches', err);
-      setError('We could not load your matches right now. Please try again soon.');
+      setMatchesError('We could not load your matches right now. Please try again soon.');
     } finally {
-      setLoading(false);
+      setMatchesLoading(false);
       setRefreshing(false);
     }
   };
@@ -71,6 +84,74 @@ export default function MentorMatchesScreen() {
   const handleRefresh = () => {
     setRefreshing(true);
     loadMatches();
+  };
+
+  const loadIntroRequests = async () => {
+    if (!user) return;
+    setIntroLoading(true);
+    setIntroError(null);
+    try {
+      const threads = await fetchThreads(user.id);
+      setIntroThreads(threads);
+    } catch (err) {
+      console.error('Failed to load intro requests', err);
+      setIntroError('We could not load intro requests right now. Please try again soon.');
+    } finally {
+      setIntroLoading(false);
+      setIntroRefreshing(false);
+    }
+  };
+
+  const handleRefreshIntro = () => {
+    setIntroRefreshing(true);
+    loadIntroRequests();
+  };
+
+  const handleToggleIntroStatus = async () => {
+    if (!user?.mentorProfile) {
+      Alert.alert('Complete your profile', 'Please finish mentor onboarding to manage intro requests.');
+      return;
+    }
+
+    setUpdatingIntroStatus(true);
+    try {
+      await updateProfile({
+        mentorProfile: {
+          ...user.mentorProfile,
+          acceptingIntroRequests: !acceptingIntroRequests,
+        },
+      });
+    } catch (err) {
+      Alert.alert('Something went wrong', 'Unable to update your intro preferences right now.');
+    } finally {
+      setUpdatingIntroStatus(false);
+    }
+  };
+
+  const renderIntroCard = (thread: MessageThread) => {
+    if (!user) return null;
+    const studentName = getOtherParticipantName(thread, user.id);
+    return (
+      <Card key={thread.id} style={styles.introCard}>
+        <View style={styles.introHeader}>
+          <Avatar name={studentName} size="medium" />
+          <View style={styles.introHeaderText}>
+            <Text style={styles.mentorName}>{studentName}</Text>
+            <Text style={styles.introTimestamp}>{new Date(thread.lastMessageTime).toLocaleString()}</Text>
+          </View>
+        </View>
+        <Text style={styles.introMessage} numberOfLines={2}>
+          {thread.lastMessage}
+        </Text>
+        <View style={styles.cardActions}>
+          <Button
+            title="Open conversation"
+            onPress={() => router.push(`/(tabs)/messages/${thread.id}`)}
+            style={styles.cardButton}
+          />
+        </View>
+      </Card>
+    );
   };
 
   const handleViewDetails = (match: MentorMatchResult) => {
@@ -177,7 +258,84 @@ export default function MentorMatchesScreen() {
     );
   };
 
-  if (loading && !refreshing) {
+  if (isMentor) {
+    if (introLoading && !introRefreshing) {
+      return <LoadingSpinner fullScreen />;
+    }
+
+    return (
+      <Screen
+        scroll
+        align="left"
+        refreshControl={<RefreshControl refreshing={introRefreshing} onRefresh={handleRefreshIntro} />}
+      >
+        <View style={styles.pageHeader}>
+          <Text style={styles.pageEyebrow}>Mentor console</Text>
+          <Text style={styles.pageTitle}>Stay in control of introductions.</Text>
+          <Text style={styles.pageSubtitle}>
+            Review new requests from students and pause intros whenever you need a break.
+          </Text>
+        </View>
+
+        <Card style={styles.statusCard}>
+          <View style={styles.statusHeader}>
+            <Text style={styles.statusTitle}>
+              {acceptingIntroRequests ? 'Accepting new intro requests' : 'Intro requests paused'}
+            </Text>
+            <View style={[styles.statusPill, acceptingIntroRequests ? styles.statusPillActive : styles.statusPillPaused]}>
+              <Text
+                style={[
+                  styles.statusPillText,
+                  acceptingIntroRequests ? styles.statusPillTextActive : styles.statusPillTextPaused,
+                ]}
+              >
+                {acceptingIntroRequests ? 'Open' : 'Paused'}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.statusCopy}>
+            {acceptingIntroRequests
+              ? 'Students who match with you can request an introduction.'
+              : 'Students cannot request introductions while paused.'}
+          </Text>
+          <Button
+            title={acceptingIntroRequests ? 'Pause intro requests' : 'Resume intro requests'}
+            variant="outline"
+            onPress={handleToggleIntroStatus}
+            loading={updatingIntroStatus}
+            style={styles.primaryButton}
+          />
+        </Card>
+
+        {introError ? (
+          <Card style={styles.errorCard}>
+            <Text style={styles.errorText}>{introError}</Text>
+            <Button
+              title="Try again"
+              variant="outline"
+              onPress={loadIntroRequests}
+              style={styles.errorBtn}
+            />
+          </Card>
+        ) : null}
+
+        <View style={styles.matchesSection}>
+          {introThreads.length === 0 ? (
+            <Card>
+              <Text style={styles.noMatchesTitle}>No intro requests yet</Text>
+              <Text style={styles.noMatchesCopy}>
+                When students request an introduction, you’ll see them here.
+              </Text>
+            </Card>
+          ) : (
+            introThreads.map(renderIntroCard)
+          )}
+        </View>
+      </Screen>
+    );
+  }
+
+  if (matchesLoading && !refreshing) {
     return <LoadingSpinner fullScreen />;
   }
 
@@ -211,9 +369,9 @@ export default function MentorMatchesScreen() {
         </Text>
       </View>
 
-      {error ? (
+      {matchesError ? (
         <Card style={styles.errorCard}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>{matchesError}</Text>
           <Button title="Try again" variant="outline" onPress={loadMatches} style={styles.errorBtn} />
         </Card>
       ) : null}
@@ -275,10 +433,30 @@ const styles = StyleSheet.create({
   matchCard: {
     gap: spacing.md,
   },
+  introCard: {
+    gap: spacing.sm,
+  },
   matchHeader: {
     flexDirection: 'row',
     gap: spacing.md,
     alignItems: 'center',
+  },
+  introHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  introHeaderText: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  introTimestamp: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  introMessage: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
   matchHeaderText: {
     flex: 1,
@@ -340,6 +518,46 @@ const styles = StyleSheet.create({
   },
   cardButton: {
     flex: 1,
+  },
+  statusCard: {
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  statusTitle: {
+    ...typography.subtitle,
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  statusPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  statusPillActive: {
+    backgroundColor: colors.primaryLight,
+  },
+  statusPillPaused: {
+    backgroundColor: colors.border,
+  },
+  statusPillText: {
+    ...typography.caption,
+    fontWeight: '600',
+  },
+  statusPillTextActive: {
+    color: colors.primary,
+  },
+  statusPillTextPaused: {
+    color: colors.textSecondary,
+  },
+  statusCopy: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
   disclaimer: {
     backgroundColor: colors.surface,

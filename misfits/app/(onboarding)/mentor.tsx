@@ -49,6 +49,14 @@ const toggleValue = <T,>(value: T, list: T[], setter: (next: T[]) => void) => {
   setter(list.includes(value) ? list.filter(item => item !== value) : [...list, value]);
 };
 
+const detectTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return undefined;
+  }
+};
+
 const communicationOptions: { label: string; value: CommunicationMethod }[] = [
   { label: 'Text', value: 'text' },
   { label: 'Video Call', value: 'video' },
@@ -118,7 +126,8 @@ export default function MentorOnboardingScreen() {
 
   const [fullName, setFullName] = useState(user?.mentorProfile?.fullName || user?.name || '');
   const [age, setAge] = useState(user?.mentorProfile?.age?.toString() || '');
-  const [timezone, setTimezone] = useState(user?.mentorProfile?.timezone || '');
+  const [locationCity, setLocationCity] = useState(user?.mentorProfile?.locationCity || '');
+  const [locationState, setLocationState] = useState(user?.mentorProfile?.locationState || '');
   const [currentRole, setCurrentRole] = useState(user?.mentorProfile?.currentRole || '');
   const [expertiseAreas, setExpertiseAreas] = useState<string[]>(
     user?.mentorProfile?.expertiseAreas || [],
@@ -146,10 +155,12 @@ export default function MentorOnboardingScreen() {
   const [shortBio, setShortBio] = useState(user?.mentorProfile?.shortBio || '');
   const [funFact, setFunFact] = useState(user?.mentorProfile?.funFact || '');
   const [submitting, setSubmitting] = useState(false);
+  const detectedTimezone = useMemo(() => detectTimezone(), []);
 
   const requiredValidations = [
     [fullName.trim().length > 0, 'Full name'],
-    [timezone.trim().length > 0, 'Time zone'],
+    [locationCity.trim().length > 0, 'City'],
+    [locationState.trim().length > 0, 'State'],
     [currentRole.trim().length > 0, 'Current role'],
     [expertiseAreas.length > 0, 'Expertise areas'],
     [menteeAgeRange.length > 0, 'Mentee age range'],
@@ -182,7 +193,9 @@ export default function MentorOnboardingScreen() {
         mentorProfile: {
           fullName: fullName.trim(),
           age: age.trim() ? (Number.isNaN(ageNumber) ? undefined : ageNumber) : undefined,
-          timezone: timezone.trim(),
+          locationCity: locationCity.trim(),
+          locationState: locationState.trim(),
+          timezone: user?.mentorProfile?.timezone || detectedTimezone,
           currentRole: currentRole.trim(),
           expertiseAreas:
             expertiseOther.trim().length > 0
@@ -236,10 +249,16 @@ export default function MentorOnboardingScreen() {
           keyboardType="number-pad"
         />
         <Input
-          label="Location / Time zone *"
-          value={timezone}
-          onChangeText={setTimezone}
-          placeholder="e.g., EST (UTC-5)"
+          label="City *"
+          value={locationCity}
+          onChangeText={setLocationCity}
+          placeholder="e.g., Austin"
+        />
+        <Input
+          label="State / Region *"
+          value={locationState}
+          onChangeText={setLocationState}
+          placeholder="e.g., TX"
         />
         <Input
           label="Current role / experience *"

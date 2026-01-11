@@ -27,7 +27,9 @@ export interface StudentProfile {
   fullName: string;
   age?: number;
   gradeLevel: GradeLevel;
-  timezone: string;
+  locationCity: string;
+  locationState: string;
+  timezone?: string;
   availabilitySlots?: string[];
   supportGoals: SupportGoal[];
   supportGoalsOther?: string;
@@ -62,7 +64,9 @@ export type MenteeTrait =
 export interface MentorProfile {
   fullName: string;
   age?: number;
-  timezone: string;
+  locationCity: string;
+  locationState: string;
+  timezone?: string;
   currentRole: string;
   expertiseAreas: string[];
   menteeAgeRange: MenteeAgeRange[];
