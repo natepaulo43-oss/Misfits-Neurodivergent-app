@@ -1,4 +1,17 @@
-import { Message, MessageThread } from '../types';
+import { Message, MessageThread, ThreadParticipantProfile } from '../types';
+
+const buildParticipants = (
+  entries: Array<ThreadParticipantProfile>,
+): Record<string, ThreadParticipantProfile> => {
+  return entries.reduce<Record<string, ThreadParticipantProfile>>((acc, participant) => {
+    acc[participant.id] = participant;
+    return acc;
+  }, {});
+};
+
+const buildParticipantKey = (participants: ThreadParticipantProfile[]): string => {
+  return [...participants].map(p => p.id).sort().join('__');
+};
 
 // Mock message threads
 export const mockThreads: MessageThread[] = [
@@ -6,15 +19,35 @@ export const mockThreads: MessageThread[] = [
     id: 'thread-1',
     participantIds: ['user-1', 'mentor-1'],
     participantNames: ['Alex Johnson', 'Dr. Sarah Chen'],
+    participants: buildParticipants([
+      { id: 'user-1', name: 'Alex Johnson', role: 'student' },
+      { id: 'mentor-1', name: 'Dr. Sarah Chen', role: 'mentor' },
+    ]),
+    participantKey: buildParticipantKey([
+      { id: 'user-1', name: 'Alex Johnson' },
+      { id: 'mentor-1', name: 'Dr. Sarah Chen' },
+    ]),
     lastMessage: 'Looking forward to our next session!',
     lastMessageTime: '2024-01-15T10:30:00Z',
+    createdAt: '2024-01-10T09:00:00Z',
+    updatedAt: '2024-01-15T10:30:00Z',
   },
   {
     id: 'thread-2',
     participantIds: ['user-1', 'mentor-2'],
     participantNames: ['Alex Johnson', 'Marcus Williams'],
+    participants: buildParticipants([
+      { id: 'user-1', name: 'Alex Johnson', role: 'student' },
+      { id: 'mentor-2', name: 'Marcus Williams', role: 'mentor' },
+    ]),
+    participantKey: buildParticipantKey([
+      { id: 'user-1', name: 'Alex Johnson' },
+      { id: 'mentor-2', name: 'Marcus Williams' },
+    ]),
     lastMessage: 'The reading strategies are really helping.',
     lastMessageTime: '2024-01-14T15:45:00Z',
+    createdAt: '2024-01-12T11:00:00Z',
+    updatedAt: '2024-01-14T15:45:00Z',
   },
 ];
 
@@ -94,7 +127,14 @@ export const getMessagesForThread = (threadId: string): Message[] => {
 
 // Helper to get other participant name
 export const getOtherParticipantName = (thread: MessageThread, currentUserId: string): string => {
+  if (thread.participants) {
+    const other = Object.values(thread.participants).find(participant => participant.id !== currentUserId);
+    if (other?.name) {
+      return other.name;
+    }
+  }
+
   const index = thread.participantIds.indexOf(currentUserId);
   const otherIndex = index === 0 ? 1 : 0;
-  return thread.participantNames[otherIndex];
+  return thread.participantNames[otherIndex] ?? 'Conversation';
 };

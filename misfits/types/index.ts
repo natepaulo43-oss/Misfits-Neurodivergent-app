@@ -151,10 +151,20 @@ export interface Message {
   timestamp: string;
 }
 
+export interface ThreadParticipantProfile {
+  id: string;
+  name: string;
+  role?: UserRole | null;
+}
+
 export interface MessageThread {
   id: string;
   participantIds: string[];
   participantNames: string[];
+  participants?: Record<string, ThreadParticipantProfile>;
+  participantKey?: string;
   lastMessage: string;
   lastMessageTime: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
