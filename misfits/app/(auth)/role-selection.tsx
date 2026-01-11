@@ -1,32 +1,32 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
-import { Button, Card, Screen } from '../../components';
+import { Button, Screen } from '../../components';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 import { UserRole } from '../../types';
 
 export default function RoleSelectionScreen() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(false);
-  const { setUserRole } = useAuth();
+  const { setUserRole, requestMentorAccess } = useAuth();
 
   const handleContinue = async () => {
     if (!selectedRole) return;
 
     setLoading(true);
     try {
-      await setUserRole(selectedRole);
-      const destination =
-        selectedRole === 'mentor' ? '/(onboarding)/mentor' : '/(onboarding)/student';
-      router.replace(destination);
+      if (selectedRole === 'student') {
+        await setUserRole('student');
+        router.replace('/(onboarding)/student');
+        return;
+      }
+
+      await requestMentorAccess();
+      router.replace('/(onboarding)/mentor');
     } catch (err) {
       console.error('Failed to set role:', err);
+      Alert.alert('Something went wrong', 'We could not start your onboarding. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -79,14 +79,20 @@ export default function RoleSelectionScreen() {
             ]}>
               Mentor
             </Text>
-            <Text style={[
-              styles.optionDescription,
-              selectedRole === 'mentor' && styles.optionDescriptionSelected,
-            ]}>
-              Share your expertise and help neurodiverse students succeed
+            <Text
+              style={[
+                styles.optionDescription,
+                selectedRole === 'mentor' && styles.optionDescriptionSelected,
+              ]}
+            >
+              Request access to mentor. Our team reviews every application before mentors join.
             </Text>
           </TouchableOpacity>
         </View>
+        <Text style={styles.helperText}>
+          To keep students safe (OWASP ASVS 1.1 & RBAC best practices), all mentors must be approved by
+          an admin before accessing the platform.
+        </Text>
 
         <Button
           title="Continue"
@@ -120,6 +126,11 @@ const styles = StyleSheet.create({
   options: {
     gap: spacing.md,
     marginBottom: spacing.xl,
+  },
+  helperText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
   },
   option: {
     padding: spacing.lg,

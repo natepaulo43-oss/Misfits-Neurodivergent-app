@@ -3,6 +3,12 @@
 import { ImageSourcePropType } from 'react-native';
 
 export type UserRole = 'student' | 'mentor' | 'admin';
+export type MentorApplicationStatus =
+  | 'not_requested'
+  | 'draft'
+  | 'submitted'
+  | 'approved'
+  | 'rejected';
 
 export type GradeLevel = 'middle_school' | 'high_school' | 'college' | 'other';
 export type MeetingFrequency = 'weekly' | 'biweekly' | 'monthly';
@@ -86,11 +92,21 @@ export interface User {
   name: string;
   email: string;
   role: UserRole | null;
+  pendingRole?: UserRole | null;
+  mentorApplicationStatus?: MentorApplicationStatus;
+  mentorApplicationSubmittedAt?: string;
+  mentorApplicationAdminNotes?: string;
+  mentorApplicationAppealText?: string;
+  mentorApplicationAppealSubmittedAt?: string;
   interests?: string[];
   learningDifferences?: string[];
   onboardingCompleted?: boolean;
   studentProfile?: StudentProfile;
   mentorProfile?: MentorProfile;
+  accountSuspended?: boolean;
+  suspensionReason?: string;
+  messagingDisabled?: boolean;
+  mentorMatchingDisabled?: boolean;
 }
 
 export interface Mentor {
@@ -149,6 +165,9 @@ export interface Message {
   toUserId: string;
   text: string;
   timestamp: string;
+  flaggedKeywords?: string[];
+  flaggedReviewed?: boolean;
+  flaggedReviewedBy?: string;
 }
 
 export interface ThreadParticipantProfile {
@@ -167,4 +186,33 @@ export interface MessageThread {
   lastMessageTime: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export type MatchStatus = 'pending' | 'active' | 'ended';
+
+export interface MatchRecord {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  mentorId: string;
+  mentorName?: string;
+  status: MatchStatus;
+  createdAt: string;
+  updatedAt?: string;
+  notes?: string;
+}
+
+export type SessionStatus = 'requested' | 'accepted' | 'declined' | 'completed' | 'canceled';
+
+export interface SessionRecord {
+  id: string;
+  matchId?: string;
+  studentId: string;
+  mentorId: string;
+  scheduledFor: string;
+  status: SessionStatus;
+  createdAt: string;
+  updatedAt?: string;
+  topic?: string;
+  notes?: string;
 }

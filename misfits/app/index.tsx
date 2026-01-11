@@ -14,13 +14,17 @@ export default function Index() {
   }
 
   if (!user.role) {
+    if (user.pendingRole === 'mentor') {
+      if (user.mentorApplicationStatus === 'submitted') {
+        return <Redirect href="/(onboarding)/mentor-submitted" />;
+      }
+      return <Redirect href="/(onboarding)/mentor" />;
+    }
     return <Redirect href="/(auth)/role-selection" />;
   }
 
-  if (!user.onboardingCompleted) {
-    const destination =
-      user.role === 'mentor' ? '/(onboarding)/mentor' : '/(onboarding)/student';
-    return <Redirect href={destination} />;
+  if (!user.onboardingCompleted && user.role === 'student') {
+    return <Redirect href="/(onboarding)/student" />;
   }
 
   return <Redirect href="/(tabs)/home" />;
