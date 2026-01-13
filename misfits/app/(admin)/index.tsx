@@ -36,10 +36,7 @@ const adminTiles: AdminTile[] = [
 
 export default function AdminHomeScreen() {
   return (
-    <AdminLayout
-      title="Admin Control Center"
-      subtitle="Every action is logged per OWASP ASVS. Apply least privilege and document decisions."
-    >
+    <AdminLayout title="Admin Control Center" subtitle="Keep mentorship running smoothly with quick admin tools.">
       <View style={styles.grid}>
         {adminTiles.map(tile => (
           <Card key={tile.route} style={styles.card}>

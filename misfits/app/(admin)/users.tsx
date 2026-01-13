@@ -148,7 +148,7 @@ export default function AdminUsersScreen() {
   return (
     <AdminLayout
       title="User management"
-      subtitle="Suspend, reinstate, and enforce RBAC. All actions are logged per OWASP ASVS."
+      subtitle="Suspend, reinstate, and oversee account safety from one place."
     >
       <Input
         placeholder="Search by name, email, or role"

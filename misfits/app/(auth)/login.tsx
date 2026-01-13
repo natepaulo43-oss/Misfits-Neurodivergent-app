@@ -30,7 +30,7 @@ export default function LoginScreen() {
 
     try {
       await login(email, password);
-      router.replace('/(tabs)/home');
+      router.replace('/');
     } catch (err) {
       setError('Invalid email or password');
     } finally {

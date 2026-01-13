@@ -111,7 +111,7 @@ export default function MentorApplicationsScreen() {
   return (
     <AdminLayout
       title="Mentor approvals"
-      subtitle="Each decision is audited. Document rationale per OWASP ASVS before approving or rejecting."
+      subtitle="Review applications and capture notes before approving or rejecting."
     >
       {applications.length === 0 ? (
         <EmptyState
