@@ -23,6 +23,10 @@ export default function Index() {
     return <Redirect href="/(auth)/role-selection" />;
   }
 
+  if (user.role === 'admin') {
+    return <Redirect href="/(admin)" />;
+  }
+
   if (!user.onboardingCompleted && user.role === 'student') {
     return <Redirect href="/(onboarding)/student" />;
   }

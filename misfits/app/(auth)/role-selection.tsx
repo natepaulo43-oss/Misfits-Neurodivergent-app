@@ -90,8 +90,7 @@ export default function RoleSelectionScreen() {
           </TouchableOpacity>
         </View>
         <Text style={styles.helperText}>
-          To keep students safe (OWASP ASVS 1.1 & RBAC best practices), all mentors must be approved by
-          an admin before accessing the platform.
+          To keep students safe, every mentor application is reviewed by our team before access is granted.
         </Text>
 
         <Button
