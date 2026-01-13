@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -56,6 +56,7 @@ export default function CuratedContentScreen() {
   const [formatFilter, setFormatFilter] = useState<FormatFilter>('all');
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const listRef = useRef<FlatList>(null);
 
   const loadContent = useCallback(async () => {
     setLoading(true);
@@ -168,14 +169,14 @@ export default function CuratedContentScreen() {
     </ScrollView>
   );
 
-  const renderContentCard = ({ item }: { item: CuratedContent }) => {
+  const renderContentCard = ({ item, index }: { item: CuratedContent; index: number }) => {
     const expanded = expandedId === item.id;
     return (
       <Card style={styles.contentCard}>
         <Pressable onPress={() => setExpandedId(expanded ? null : item.id)}>
-          <View style={styles.cardHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardEyebrow}>
+          <View style={[styles.cardHeader, isCompact && styles.cardHeaderCompact]}>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardEyebrow} numberOfLines={1}>
                 {item.audience === 'all'
                   ? 'For students & mentors'
                   : item.audience === 'student'
@@ -184,7 +185,7 @@ export default function CuratedContentScreen() {
                 • {item.format.toUpperCase()}
               </Text>
               <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardSummary}>{item.summary}</Text>
+              <Text style={styles.cardSummary} numberOfLines={expanded ? undefined : 3}>{item.summary}</Text>
             </View>
             <View style={styles.metaRight}>
               {item.featured ? <Tag label="Featured" /> : null}
@@ -255,13 +256,15 @@ export default function CuratedContentScreen() {
 
     return (
       <FlatList
+        ref={listRef}
         data={filteredItems}
         keyExtractor={item => item.id}
         renderItem={renderContentCard}
         ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        scrollEnabled={false}
+        scrollEnabled={true}
+        nestedScrollEnabled={true}
       />
     );
   };
@@ -292,7 +295,15 @@ export default function CuratedContentScreen() {
           </View>
           <Button
             title="Read more"
-            onPress={() => setExpandedId(heroItem.id)}
+            onPress={() => {
+              setExpandedId(heroItem.id);
+              const index = filteredItems.findIndex(item => item.id === heroItem.id);
+              if (index !== -1) {
+                setTimeout(() => {
+                  listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0 });
+                }, 100);
+              }
+            }}
             variant="primary"
           />
         </Card>
@@ -347,6 +358,7 @@ const styles = StyleSheet.create({
   heroSummary: {
     ...typography.body,
     color: colors.textSecondary,
+    lineHeight: 20,
   },
   heroTags: {
     flexDirection: 'row',
@@ -441,6 +453,14 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  cardHeaderCompact: {
+    flexDirection: 'column',
+    gap: spacing.xs,
+  },
+  cardContent: {
+    flex: 1,
+    minWidth: 0,
   },
   cardEyebrow: {
     ...typography.caption,
