@@ -12,6 +12,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', route: '/(admin)' },
+  { label: 'Curated Content', route: '/(admin)/curated-content' },
   { label: 'Mentor Applications', route: '/(admin)/mentor-applications' },
   { label: 'User Management', route: '/(admin)/users' },
   { label: 'Messaging Moderation', route: '/(admin)/conversations' },
@@ -150,7 +151,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: 0,
     gap: spacing.lg,
   },
   headerRow: {

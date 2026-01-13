@@ -29,6 +29,18 @@ export type SupportGoal =
   | 'other';
 export type NeurodivergenceOption = 'adhd' | 'autism' | 'dyslexia' | 'other' | 'prefer_not_to_say';
 
+export type CuratedContentCategory =
+  | 'stories'
+  | 'academic_tips'
+  | 'organization'
+  | 'confidence'
+  | 'mentor_spotlight'
+  | 'marketplace';
+
+export type CuratedContentFormat = 'article' | 'video' | 'image' | 'resource';
+export type CuratedContentStatus = 'draft' | 'published' | 'archived';
+export type CuratedContentAudience = 'student' | 'mentor' | 'all';
+
 export interface StudentProfile {
   fullName: string;
   age?: number;
@@ -80,12 +92,36 @@ export interface MentorProfile {
   neurodivergenceExperience: NeurodivergenceExperience;
   communicationMethods: CommunicationMethod[];
   availabilitySlots: string[];
-  mentoringApproach: MentoringApproach[];
+  mentoringApproach?: MentoringApproach[];
   valuedMenteeTraits?: MenteeTrait[];
   shortBio?: string;
   funFact?: string;
   acceptingIntroRequests?: boolean;
 }
+
+export interface CuratedContent {
+  id: string;
+  title: string;
+  summary: string;
+  body: string;
+  categories: CuratedContentCategory[];
+  format: CuratedContentFormat;
+  mediaUrl?: string;
+  thumbnailUrl?: string;
+  featured?: boolean;
+  status: CuratedContentStatus;
+  audience: CuratedContentAudience;
+  authorName?: string;
+  mentorRecommendationNote?: string;
+  marketplaceRecommendationUrl?: string;
+  relatedMentorIds?: string[];
+  tags?: string[];
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CuratedContentPayload = Omit<CuratedContent, 'id' | 'createdAt' | 'updatedAt'>;
 
 export interface User {
   id: string;
