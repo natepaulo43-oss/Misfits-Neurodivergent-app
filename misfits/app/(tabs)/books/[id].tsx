@@ -44,7 +44,7 @@ export default function BookDetailScreen() {
   return (
     <Screen scroll>
       <View style={styles.coverContainer}>
-        <Image source={book.coverImage} style={styles.coverImage} />
+        <Image source={book.coverImage} style={styles.coverImage} resizeMode="cover" />
       </View>
 
       <View style={styles.info}>
@@ -96,7 +96,6 @@ const styles = StyleSheet.create({
     width: 200,
     height: 300,
     borderRadius: borderRadius.md,
-    resizeMode: 'cover',
   },
   info: {
     alignItems: 'center',

@@ -37,7 +37,7 @@ export default function BooksListScreen() {
       onPress={() => router.push(`/(tabs)/books/${item.id}`)}
     >
       <View style={styles.cardContent}>
-        <Image source={item.coverImage} style={styles.coverImage} />
+        <Image source={item.coverImage} style={styles.coverImage} resizeMode="cover" />
         <View style={styles.cardInfo}>
           <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
           <Text style={styles.author}>{item.author}</Text>
@@ -100,7 +100,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 120,
     borderRadius: borderRadius.sm,
-    resizeMode: 'cover',
   },
   cardInfo: {
     flex: 1,

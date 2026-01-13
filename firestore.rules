@@ -1,0 +1,188 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // Helper Functions
+    // ============================================
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && getUserRole() in ['admin', 'super_admin'];
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAccountActive() {
+      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return userData.accountSuspended != true;
+    }
+    
+    function canMessage() {
+      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return userData.messagingDisabled != true && userData.accountSuspended != true;
+    }
+    
+    // ============================================
+    // Users Collection
+    // ============================================
+    
+    match /users/{userId} {
+      // Users can read their own document
+      // Admins can read all users
+      // All authenticated users can read basic user info (for messaging, matching)
+      allow read: if isSignedIn();
+      
+      // Users can write their own document (profile updates)
+      allow write: if isOwner(userId) && isAccountActive();
+      
+      // Admins can write any user document
+      allow write: if isAdmin();
+    }
+    
+    // ============================================
+    // Message Threads Collection
+    // ============================================
+    
+    match /threads/{threadId} {
+      // Participants can read their threads
+      allow read: if isSignedIn() && 
+        request.auth.uid in resource.data.participantIds;
+      
+      // Any authenticated user can create a thread (checked in app logic)
+      allow create: if isSignedIn() && canMessage() &&
+        request.auth.uid in request.resource.data.participantIds;
+      
+      // Participants can update thread metadata (lastMessage, etc.)
+      allow update: if isSignedIn() && canMessage() &&
+        request.auth.uid in resource.data.participantIds;
+      
+      // Admins can read all threads (for moderation)
+      allow read: if isAdmin();
+      
+      // Admins cannot delete threads (preserve audit trail)
+      allow delete: if false;
+      
+      // ============================================
+      // Messages Subcollection
+      // ============================================
+      
+      match /messages/{messageId} {
+        // Participants can read messages in their threads
+        allow read: if isSignedIn() && 
+          request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantIds;
+        
+        // Participants can create messages in their threads
+        allow create: if isSignedIn() && canMessage() &&
+          request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantIds &&
+          request.auth.uid == request.resource.data.fromUserId;
+        
+        // Admins can read all messages (for moderation)
+        allow read: if isAdmin();
+        
+        // Admins can update messages (for flagging/review)
+        allow update: if isAdmin();
+        
+        // Messages cannot be deleted (preserve audit trail)
+        allow delete: if false;
+      }
+    }
+    
+    // ============================================
+    // Curated Content Collection
+    // ============================================
+    
+    match /curatedContent/{contentId} {
+      // Everyone can read published content
+      allow read: if resource.data.status == 'published';
+      
+      // Admins can read all content (including drafts)
+      allow read: if isAdmin();
+      
+      // Admins can create, update, and delete content
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Matches Collection
+    // ============================================
+    
+    match /matches/{matchId} {
+      // Students and mentors can read their own matches
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.studentId ||
+        request.auth.uid == resource.data.mentorId
+      );
+      
+      // Admins can read all matches
+      allow read: if isAdmin();
+      
+      // Admins can create, update, and delete matches
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Sessions Collection
+    // ============================================
+    
+    match /sessions/{sessionId} {
+      // Students and mentors can read their own sessions
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.studentId ||
+        request.auth.uid == resource.data.mentorId
+      );
+      
+      // Students and mentors can update their own sessions (status changes)
+      allow update: if isSignedIn() && isAccountActive() && (
+        request.auth.uid == resource.data.studentId ||
+        request.auth.uid == resource.data.mentorId
+      );
+      
+      // Admins can read all sessions
+      allow read: if isAdmin();
+      
+      // Admins can create, update, and delete sessions
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Books Collection (Future - Currently Mock Data)
+    // ============================================
+    
+    match /books/{bookId} {
+      // Everyone can read approved books
+      allow read: if resource.data.approved == true;
+      
+      // Admins can read all books
+      allow read: if isAdmin();
+      
+      // Admins can create, update, and delete books
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Book Purchases Collection (Future)
+    // ============================================
+    
+    match /purchases/{purchaseId} {
+      // Users can read their own purchases
+      allow read: if isOwner(resource.data.userId);
+      
+      // Users can create their own purchases
+      allow create: if isOwner(request.resource.data.userId) && isAccountActive();
+      
+      // Admins can read all purchases
+      allow read: if isAdmin();
+    }
+  }
+}
