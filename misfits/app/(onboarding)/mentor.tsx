@@ -6,6 +6,7 @@ import { Screen, Input, Button } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { colors, spacing, typography, borderRadius } from '../../constants/theme';
 import {
+  User,
   CommunicationMethod,
   MentoringApproach,
   MenteeAgeRange,
@@ -123,6 +124,7 @@ const availabilityOptions = [
 
 export default function MentorOnboardingScreen() {
   const { user, updateProfile } = useAuth();
+  const isApprovedMentor = user?.mentorApplicationStatus === 'approved' || user?.role === 'mentor';
 
   const [fullName, setFullName] = useState(user?.mentorProfile?.fullName || user?.name || '');
   const [age, setAge] = useState(user?.mentorProfile?.age?.toString() || '');
@@ -185,12 +187,10 @@ export default function MentorOnboardingScreen() {
     }
 
     const ageNumber = Number(age);
-
-    const submissionTimestamp = new Date().toISOString();
-
+    const submissionTimestamp = isApprovedMentor ? undefined : new Date().toISOString();
     setSubmitting(true);
     try {
-      await updateProfile({
+      const profilePayload: Partial<User> = {
         name: fullName.trim(),
         mentorProfile: {
           fullName: fullName.trim(),
@@ -214,12 +214,21 @@ export default function MentorOnboardingScreen() {
           funFact: funFact.trim() || undefined,
         },
         onboardingCompleted: true,
-        pendingRole: 'mentor',
-        mentorApplicationStatus: 'submitted',
-        mentorApplicationSubmittedAt: submissionTimestamp,
-      });
+      };
 
-      router.replace('/(onboarding)/mentor-submitted');
+      if (!isApprovedMentor) {
+        profilePayload.pendingRole = 'mentor';
+        profilePayload.mentorApplicationStatus = 'submitted';
+        profilePayload.mentorApplicationSubmittedAt = submissionTimestamp;
+      }
+
+      await updateProfile(profilePayload);
+
+      if (isApprovedMentor) {
+        router.replace('/(tabs)/profile');
+      } else {
+        router.replace('/(onboarding)/mentor-submitted');
+      }
     } catch (error) {
       showAlert('Error', 'Failed to save your profile. Please try again.');
     } finally {
