@@ -13,6 +13,11 @@ type AdminTile = {
 
 const adminTiles: AdminTile[] = [
   {
+    title: 'Curated Content Studio',
+    description: 'Publish stories, tips, and mentor spotlights that surface in the student & mentor hubs.',
+    route: '/(admin)/curated-content',
+  },
+  {
     title: 'Mentor Applications',
     description: 'Approve or reject mentor requests, add admin notes, and audit appeals.',
     route: '/(admin)/mentor-applications',

@@ -64,6 +64,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="curated"
+        options={{
+          title: 'Library',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="sparkles-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
