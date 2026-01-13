@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, useWindowDimensions, Alert } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colors, spacing, typography, borderRadius } from '../constants/theme';
+import { useAuth } from '../context/AuthContext';
 
 type NavItem = {
   label: string;
@@ -33,12 +34,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
   actions,
   children,
 }) => {
+  const { user, logout } = useAuth();
   const pathname = usePathname();
   const { width } = useWindowDimensions();
   const isCompact = width < 768;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const visibleNav = !isCompact || menuOpen;
+  const showUserBadge = width >= 480;
 
   const handleNavPress = (route: string) => {
     router.replace(route);
@@ -47,10 +51,29 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
     }
   };
 
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      router.replace('/(auth)/login');
+    } catch (error) {
+      console.error('[admin] Failed to log out', error);
+      Alert.alert('Logout failed', 'Please try again.');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   const activeLabel = useMemo(() => {
     const current = NAV_ITEMS.find(item => pathname?.startsWith(item.route));
     return current?.label ?? 'Dashboard';
   }, [pathname]);
+
+  const userDisplayName = user?.name ?? user?.email ?? 'Admin user';
+  const userInitial = userDisplayName.charAt(0).toUpperCase();
+  const userRoleLabel =
+    user?.role?.charAt(0).toUpperCase() + (user?.role?.slice(1).replace(/_/g, ' ') ?? '') || 'Admin';
 
   return (
     <View style={styles.root}>
@@ -86,13 +109,37 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
             <View style={styles.logoMarkSmall} />
             <Text style={styles.topLogoText}>{activeLabel}</Text>
           </Pressable>
-          <Pressable
-            accessibilityLabel={menuOpen ? 'Close admin menu' : 'Open admin menu'}
-            style={styles.menuButton}
-            onPress={() => setMenuOpen(prev => !prev)}
-          >
-            <Ionicons name={menuOpen ? 'close' : 'menu'} size={22} color={colors.textPrimary} />
-          </Pressable>
+          <View style={styles.topActions}>
+            {showUserBadge ? (
+              <View style={styles.userBadge}>
+                <View style={styles.userAvatar}>
+                  <Text style={styles.userAvatarText}>{userInitial}</Text>
+                </View>
+                <View>
+                  <Text style={styles.userName} numberOfLines={1}>
+                    {userDisplayName}
+                  </Text>
+                  <Text style={styles.userRole}>{userRoleLabel}</Text>
+                </View>
+              </View>
+            ) : null}
+            <Pressable
+              style={[styles.logoutButton, isLoggingOut && styles.logoutButtonDisabled]}
+              onPress={handleLogout}
+              disabled={isLoggingOut}
+              accessibilityRole="button"
+            >
+              <Ionicons name="log-out-outline" size={18} color={colors.error} />
+              <Text style={styles.logoutText}>{isLoggingOut ? 'Logging out…' : 'Logout'}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel={menuOpen ? 'Close admin menu' : 'Open admin menu'}
+              style={styles.menuButton}
+              onPress={() => setMenuOpen(prev => !prev)}
+            >
+              <Ionicons name={menuOpen ? 'close' : 'menu'} size={22} color={colors.textPrimary} />
+            </Pressable>
+          </View>
         </View>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.headerRow}>
@@ -219,6 +266,11 @@ const styles = StyleSheet.create({
     ...typography.subtitle,
     color: colors.textPrimary,
   },
+  topActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   logo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -256,5 +308,57 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  userBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  userAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userAvatarText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  userName: {
+    ...typography.bodySmall,
+    color: colors.textPrimary,
+    maxWidth: 140,
+  },
+  userRole: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.error,
+    backgroundColor: colors.surface,
+  },
+  logoutButtonDisabled: {
+    opacity: 0.6,
+  },
+  logoutText: {
+    ...typography.bodySmall,
+    color: colors.error,
+    fontWeight: '600',
   },
 });
