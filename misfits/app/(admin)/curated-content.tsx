@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -90,6 +91,8 @@ export default function CuratedContentAdminScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [draftExpanded, setDraftExpanded] = useState(true);
   const [publishedExpanded, setPublishedExpanded] = useState(true);
+  const [archivedExpanded, setArchivedExpanded] = useState(false);
+  const [deleteInFlightId, setDeleteInFlightId] = useState<string | null>(null);
 
   const loadContent = useCallback(async () => {
     setLoading(true);
@@ -175,25 +178,46 @@ export default function CuratedContentAdminScreen() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const performDelete = async (id: string) => {
+    setDeleteInFlightId(id);
+    try {
+      await deleteCuratedContent(id);
+      setContent(prev => prev.filter(item => item.id !== id));
+      if (selectedId === id) {
+        handleResetForm();
+      }
+      await loadContent();
+    } catch (error) {
+      console.error('[admin] Failed to delete curated content', error);
+      Alert.alert('Delete failed', 'Please retry.');
+    } finally {
+      setDeleteInFlightId(null);
+    }
+  };
+
+  const requestDelete = (id: string) => {
+    const executeDelete = () => {
+      void performDelete(id);
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmFn = (globalThis as typeof globalThis & {
+        confirm?: (message?: string) => boolean;
+      }).confirm;
+      const confirmed =
+        typeof confirmFn === 'function'
+          ? confirmFn('Delete content?\nThis will remove the piece for all audiences.')
+          : true;
+
+      if (confirmed) {
+        executeDelete();
+      }
+      return;
+    }
+
     Alert.alert('Delete content?', 'This will remove the piece for all audiences.', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteCuratedContent(id);
-            if (selectedId === id) {
-              handleResetForm();
-            }
-            await loadContent();
-          } catch (error) {
-            console.error('[admin] Failed to delete curated content', error);
-            Alert.alert('Delete failed', 'Please retry.');
-          }
-        },
-      },
+      { text: 'Delete', style: 'destructive', onPress: executeDelete },
     ]);
   };
 
@@ -240,13 +264,18 @@ export default function CuratedContentAdminScreen() {
   }, [content, statusFilter, normalizedSearch]);
 
   const draftContent = useMemo(
-    () => content.filter(item => item.status === 'draft'),
-    [content],
+    () => filteredContent.filter(item => item.status === 'draft'),
+    [filteredContent],
   );
 
   const publishedContent = useMemo(
-    () => content.filter(item => item.status === 'published'),
-    [content],
+    () => filteredContent.filter(item => item.status === 'published'),
+    [filteredContent],
+  );
+
+  const archivedContent = useMemo(
+    () => filteredContent.filter(item => item.status === 'archived'),
+    [filteredContent],
   );
 
   const renderFilters = () => (
@@ -311,17 +340,21 @@ export default function CuratedContentAdminScreen() {
             handleStatusChange(item.id, item.status === 'published' ? 'draft' : 'published')
           }
         />
-        <Button
-          title="Archive"
-          size="small"
-          variant="outline"
-          onPress={() => handleStatusChange(item.id, 'archived')}
-        />
+        {item.status !== 'archived' ? (
+          <Button
+            title="Archive"
+            size="small"
+            variant="outline"
+            onPress={() => handleStatusChange(item.id, 'archived')}
+          />
+        ) : null}
         <Button
           title="Delete"
           size="small"
           variant="danger"
-          onPress={() => handleDelete(item.id)}
+          onPress={() => requestDelete(item.id)}
+          loading={deleteInFlightId === item.id}
+          disabled={deleteInFlightId === item.id}
         />
       </View>
     </Card>
@@ -352,7 +385,11 @@ export default function CuratedContentAdminScreen() {
           showsVerticalScrollIndicator={false}
         >
           {publishedContent.length === 0 ? (
-            <Text style={styles.emptyLabel}>Once you publish content it will show up here.</Text>
+            <Text style={styles.emptyLabel}>
+              {statusFilter === 'all'
+                ? 'Once you publish content it will show up here.'
+                : 'No published content matches the current filters.'}
+            </Text>
           ) : (
             publishedContent.map(renderContentCard)
           )}
@@ -435,9 +472,51 @@ export default function CuratedContentAdminScreen() {
           showsVerticalScrollIndicator={false}
         >
           {draftContent.length === 0 ? (
-            <Text style={styles.emptyLabel}>Drafts you save will appear here for review.</Text>
+            <Text style={styles.emptyLabel}>
+              {statusFilter === 'all'
+                ? 'Drafts you save will appear here for review.'
+                : 'No drafts match the current filters.'}
+            </Text>
           ) : (
             draftContent.map(renderContentCard)
+          )}
+        </ScrollView>
+      )}
+    </Card>
+  );
+
+  const renderArchivedShelf = () => (
+    <Card style={styles.draftCard}>
+      <Pressable style={styles.sectionHeader} onPress={() => setArchivedExpanded(!archivedExpanded)}>
+        <View style={styles.sectionHeaderLeft}>
+          <Text style={styles.sectionTitle}>Archived content</Text>
+          <Text style={styles.sectionSubtitle}>
+            {archivedContent.length === 0
+              ? 'No archived content yet'
+              : `${archivedContent.length} archived piece${archivedContent.length === 1 ? '' : 's'}`}
+          </Text>
+        </View>
+        <Ionicons 
+          name={archivedExpanded ? 'chevron-up' : 'chevron-down'} 
+          size={20} 
+          color={colors.textSecondary} 
+        />
+      </Pressable>
+      {archivedExpanded && (
+        <ScrollView
+          style={styles.workspaceScroller}
+          contentContainerStyle={styles.draftList}
+          nestedScrollEnabled
+          showsVerticalScrollIndicator={false}
+        >
+          {archivedContent.length === 0 ? (
+            <Text style={styles.emptyLabel}>
+              {statusFilter === 'all'
+                ? 'Once you archive content it will show up here.'
+                : 'No archived content matches the current filters.'}
+            </Text>
+          ) : (
+            archivedContent.map(renderContentCard)
           )}
         </ScrollView>
       )}
@@ -565,6 +644,7 @@ export default function CuratedContentAdminScreen() {
             <>
               {renderDraftShelf()}
               {renderPublishedShelf()}
+              {renderArchivedShelf()}
             </>
           )}
         </ScrollView>
