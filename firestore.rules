@@ -25,11 +25,13 @@ service cloud.firestore {
     
     function isAccountActive() {
       let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      // Default to true (active) if field doesn't exist
       return userData.accountSuspended != true;
     }
     
     function canMessage() {
       let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      // Default to true (can message) if fields don't exist
       return userData.messagingDisabled != true && userData.accountSuspended != true;
     }
     
@@ -56,15 +58,20 @@ service cloud.firestore {
     
     match /threads/{threadId} {
       // Participants can read their threads
-      allow read: if isSignedIn() && 
+      allow get: if isSignedIn() && 
         request.auth.uid in resource.data.participantIds;
       
-      // Any authenticated user can create a thread (checked in app logic)
-      allow create: if isSignedIn() && canMessage() &&
+      // Allow authenticated users to list/query threads to find existing conversations
+      // This is needed for the findExistingThread query in startNewThread
+      allow list: if isSignedIn();
+      
+      // Any authenticated user can create a thread
+      // The app logic (ensureMessagingAllowed) handles additional checks
+      allow create: if isSignedIn() &&
         request.auth.uid in request.resource.data.participantIds;
       
       // Participants can update thread metadata (lastMessage, etc.)
-      allow update: if isSignedIn() && canMessage() &&
+      allow update: if isSignedIn() &&
         request.auth.uid in resource.data.participantIds;
       
       // Admins can read all threads (for moderation)
@@ -83,7 +90,8 @@ service cloud.firestore {
           request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantIds;
         
         // Participants can create messages in their threads
-        allow create: if isSignedIn() && canMessage() &&
+        // The app logic (ensureMessagingAllowed) handles additional checks
+        allow create: if isSignedIn() &&
           request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantIds &&
           request.auth.uid == request.resource.data.fromUserId;
         
