@@ -25,9 +25,8 @@ export default function MentorSubmittedScreen() {
           <Text style={styles.eyebrow}>Mentor access pending</Text>
           <Text style={styles.title}>Thank you for applying!</Text>
           <Text style={styles.body}>
-            Your request to become a mentor was submitted successfully. Our admin team reviews every
-            application to keep students safe (OWASP ASVS + role-based access control). We’ll email you as
-            soon as you’re approved.
+            Your request to become a mentor was submitted successfully. We keep mentor and student data
+            private to keep everyone safe. We’ll email you as soon as you’re approved.
           </Text>
           <Text style={styles.note}>
             You can close the app for now. Come back later or refresh to check your status.
