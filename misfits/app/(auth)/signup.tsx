@@ -7,6 +7,7 @@ import {
   Platform,
   TouchableOpacity,
 } from 'react-native';
+import { FirebaseError } from 'firebase/app';
 import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Input, Screen, Card } from '../../components';
@@ -19,6 +20,31 @@ export default function SignupScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
+
+  const getSignupErrorMessage = (error: unknown): string => {
+    if (error && typeof error === 'object' && 'code' in error) {
+      const firebaseError = error as FirebaseError;
+
+      switch (firebaseError.code) {
+        case 'auth/email-already-in-use':
+          return 'This email is already associated with an account.';
+        case 'auth/invalid-email':
+          return 'Please enter a valid email address.';
+        case 'auth/weak-password':
+          return 'Password is too weak. Try adding numbers or symbols.';
+        case 'auth/operation-not-allowed':
+          return 'Email/password sign up is disabled. Please contact support.';
+        case 'auth/network-request-failed':
+          return 'Network error. Please check your connection and try again.';
+        default:
+          if (firebaseError.message) {
+            return firebaseError.message;
+          }
+      }
+    }
+
+    return 'Failed to create account';
+  };
 
   const handleSignup = async () => {
     if (!name || !email || !password) {
@@ -38,7 +64,8 @@ export default function SignupScreen() {
       await signUp(name, email, password);
       router.replace('/(auth)/role-selection');
     } catch (err) {
-      setError('Failed to create account');
+      console.error('Signup failed', err);
+      setError(getSignupErrorMessage(err));
     } finally {
       setLoading(false);
     }

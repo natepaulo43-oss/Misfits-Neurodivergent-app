@@ -11,8 +11,19 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    function getSignedInUserData() {
+      return isSignedIn()
+        ? (
+            exists(/databases/$(database)/documents/users/$(request.auth.uid))
+              ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data
+              : null
+          )
+        : null;
+    }
+
     function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      let userData = getSignedInUserData();
+      return userData == null ? null : userData.role;
     }
     
     function isAdmin() {
@@ -24,15 +35,18 @@ service cloud.firestore {
     }
     
     function isAccountActive() {
-      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      // Default to true (active) if field doesn't exist
-      return userData.accountSuspended != true;
+      let userData = getSignedInUserData();
+      // Default to true (active) if no user doc yet or field doesn't exist
+      return userData == null || userData.accountSuspended != true;
     }
     
     function canMessage() {
-      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      // Default to true (can message) if fields don't exist
-      return userData.messagingDisabled != true && userData.accountSuspended != true;
+      let userData = getSignedInUserData();
+      // Default to true (can message) if no user doc yet or fields don't exist
+      return (
+        userData == null ||
+        (userData.messagingDisabled != true && userData.accountSuspended != true)
+      );
     }
     
     // ============================================
