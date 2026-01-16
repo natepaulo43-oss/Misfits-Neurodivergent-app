@@ -59,8 +59,14 @@ service cloud.firestore {
       // All authenticated users can read basic user info (for messaging, matching)
       allow read: if isSignedIn();
       
-      // Users can write their own document (profile updates)
-      allow write: if isOwner(userId) && isAccountActive();
+      // Users can create their own document (initial signup/onboarding)
+      allow create: if isOwner(userId);
+      
+      // Users can update their own document (profile updates)
+      // Only blocked if account is suspended OR they're trying to suspend themselves
+      allow update: if isOwner(userId) && 
+        !resource.data.get('accountSuspended', false) &&
+        !request.resource.data.get('accountSuspended', false);
       
       // Admins can write any user document
       allow write: if isAdmin();
