@@ -9,6 +9,11 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const isMentor = user?.role === 'mentor';
 
+  const primaryAction = {
+    title: isMentor ? 'Requests' : 'Browse Mentors',
+    route: isMentor ? '/(tabs)/messages' : '/(tabs)/mentors',
+  };
+
   return (
     <Screen scroll align="left">
       <Card style={styles.heroCard}>
@@ -24,8 +29,8 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>Quick Access</Text>
         <View style={styles.buttonStack}>
           <Button
-            title="Browse Mentors"
-            onPress={() => router.push('/(tabs)/mentors')}
+            title={primaryAction.title}
+            onPress={() => router.push(primaryAction.route)}
             size="large"
             style={styles.button}
           />
