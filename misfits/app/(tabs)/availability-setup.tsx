@@ -7,8 +7,12 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Modal,
+  Platform,
+  TextInput,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Button } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import { getMentorAvailability, saveMentorAvailability } from '../../services/scheduling';
@@ -39,6 +43,10 @@ const SESSION_DURATIONS = [
 
 export default function AvailabilitySetupScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ returnTo?: string }>();
+  const returnToParam = typeof params.returnTo === 'string' && params.returnTo.length > 0
+    ? decodeURIComponent(params.returnTo)
+    : null;
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,13 +56,22 @@ export default function AvailabilitySetupScreen() {
   const [bufferMinutes, setBufferMinutes] = useState(10);
   const [maxSessionsPerDay, setMaxSessionsPerDay] = useState<number | undefined>(3);
   const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
+  const [showTimeModal, setShowTimeModal] = useState(false);
+  const [editingBlockIndex, setEditingBlockIndex] = useState<number | null>(null);
+  const [editingField, setEditingField] = useState<'dayOfWeek' | 'startTime' | 'endTime' | null>(null);
+  const [tempTime, setTempTime] = useState(new Date());
 
   useEffect(() => {
-    loadExistingAvailability();
-  }, []);
+    if (user) {
+      loadExistingAvailability();
+    }
+  }, [user]);
 
   const loadExistingAvailability = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const existing = await getMentorAvailability(user.id);
@@ -80,6 +97,70 @@ export default function AvailabilitySetupScreen() {
       endTime: '17:00',
     };
     setWeeklyBlocks([...weeklyBlocks, newBlock]);
+  };
+
+  const openTimePicker = (index: number, field: 'startTime' | 'endTime') => {
+    const block = weeklyBlocks[index];
+    const timeStr = field === 'startTime' ? block.startTime : block.endTime;
+    const { hours, minutes } = parseTimeString(timeStr);
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    setTempTime(date);
+    setEditingBlockIndex(index);
+    setEditingField(field);
+    setShowTimeModal(true);
+  };
+
+  const openDayPicker = (index: number) => {
+    setEditingBlockIndex(index);
+    setEditingField('dayOfWeek');
+    setShowTimeModal(true);
+  };
+
+  const handleTimeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowTimeModal(false);
+    }
+    
+    if (selectedDate && editingBlockIndex !== null && editingField) {
+      const hours = selectedDate.getHours();
+      const minutes = selectedDate.getMinutes();
+      const timeStr = formatTimeString(hours, minutes);
+      
+      if (editingField === 'startTime' || editingField === 'endTime') {
+        updateBlock(editingBlockIndex, { [editingField]: timeStr });
+      }
+      
+      if (Platform.OS === 'ios') {
+        setTempTime(selectedDate);
+      } else {
+        setEditingBlockIndex(null);
+        setEditingField(null);
+      }
+    }
+  };
+
+  const handleWebTimeChange = (timeStr: string) => {
+    if (editingBlockIndex !== null && editingField && timeStr) {
+      if (editingField === 'startTime' || editingField === 'endTime') {
+        updateBlock(editingBlockIndex, { [editingField]: timeStr });
+      }
+    }
+  };
+
+  const handleDayChange = (dayOfWeek: number) => {
+    if (editingBlockIndex !== null) {
+      updateBlock(editingBlockIndex, { dayOfWeek });
+      setShowTimeModal(false);
+      setEditingBlockIndex(null);
+      setEditingField(null);
+    }
+  };
+
+  const closeTimePicker = () => {
+    setShowTimeModal(false);
+    setEditingBlockIndex(null);
+    setEditingField(null);
   };
 
   const updateBlock = (index: number, updates: Partial<WeeklyAvailabilityBlock>) => {
@@ -112,8 +193,24 @@ export default function AvailabilitySetupScreen() {
     setWeeklyBlocks(newBlocks.sort((a, b) => a.dayOfWeek - b.dayOfWeek));
   };
 
+  const navigateAfterSave = () => {
+    if (returnToParam) {
+      router.replace(returnToParam as any);
+      return;
+    }
+
+    router.replace('/(tabs)/profile');
+  };
+
   const handleSave = async () => {
     if (!user) return;
+
+    // Debug: Log user info
+    console.log('=== SAVE ATTEMPT ===');
+    console.log('User ID:', user.id);
+    console.log('User Role:', user.role);
+    console.log('User Email:', user.email);
+    console.log('Account Suspended:', user.accountSuspended);
 
     const availability = {
       timezone,
@@ -133,10 +230,11 @@ export default function AvailabilitySetupScreen() {
     setSaving(true);
     try {
       await saveMentorAvailability(user.id, availability);
-      Alert.alert('Success', 'Your availability has been saved!', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      Alert.alert('Availability Saved', 'Your availability has been saved successfully.');
+      navigateAfterSave();
     } catch (error) {
+      console.error('=== SAVE ERROR ===');
+      console.error('Error:', error);
       Alert.alert('Error', error instanceof Error ? error.message : 'Failed to save availability');
     } finally {
       setSaving(false);
@@ -262,7 +360,9 @@ export default function AvailabilitySetupScreen() {
           {weeklyBlocks.map((block, index) => (
             <View key={index} style={styles.blockCard}>
               <View style={styles.blockHeader}>
-                <Text style={styles.blockTitle}>{getDayOfWeekLabel(block.dayOfWeek)}</Text>
+                <TouchableOpacity onPress={() => openDayPicker(index)}>
+                  <Text style={styles.blockTitle}>{getDayOfWeekLabel(block.dayOfWeek)} ▼</Text>
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => removeBlock(index)}>
                   <Text style={styles.removeText}>Remove</Text>
                 </TouchableOpacity>
@@ -270,9 +370,13 @@ export default function AvailabilitySetupScreen() {
 
               <View style={styles.timeRow}>
                 <Text style={styles.timeLabel}>From:</Text>
-                <Text style={styles.timeValue}>{block.startTime}</Text>
+                <TouchableOpacity onPress={() => openTimePicker(index, 'startTime')}>
+                  <Text style={styles.timeValueEditable}>{block.startTime}</Text>
+                </TouchableOpacity>
                 <Text style={styles.timeLabel}>To:</Text>
-                <Text style={styles.timeValue}>{block.endTime}</Text>
+                <TouchableOpacity onPress={() => openTimePicker(index, 'endTime')}>
+                  <Text style={styles.timeValueEditable}>{block.endTime}</Text>
+                </TouchableOpacity>
               </View>
 
               <TouchableOpacity
@@ -293,6 +397,93 @@ export default function AvailabilitySetupScreen() {
           />
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showTimeModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={closeTimePicker}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {editingField === 'dayOfWeek' ? (
+              <>
+                <Text style={styles.modalTitle}>Select Day</Text>
+                <ScrollView style={styles.dayPickerScroll}>
+                  {DAYS_OF_WEEK.map(day => (
+                    <TouchableOpacity
+                      key={day.value}
+                      style={styles.dayOption}
+                      onPress={() => handleDayChange(day.value)}
+                    >
+                      <Text style={styles.dayOptionText}>{day.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <TouchableOpacity style={styles.modalCloseButton} onPress={closeTimePicker}>
+                  <Text style={styles.modalCloseButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            ) : Platform.OS === 'web' ? (
+              <>
+                <Text style={styles.modalTitle}>
+                  {editingField === 'startTime' ? 'Select Start Time' : 'Select End Time'}
+                </Text>
+                <View style={styles.webTimePickerContainer}>
+                  <TextInput
+                    style={styles.webTimeInput}
+                    value={editingBlockIndex !== null && editingField ? 
+                      (editingField === 'startTime' ? weeklyBlocks[editingBlockIndex].startTime : weeklyBlocks[editingBlockIndex].endTime) : 
+                      '09:00'
+                    }
+                    onChangeText={handleWebTimeChange}
+                    placeholder="HH:MM"
+                    maxLength={5}
+                  />
+                  <Text style={styles.webTimeHint}>Format: HH:MM (24-hour)</Text>
+                </View>
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity style={styles.modalButton} onPress={closeTimePicker}>
+                    <Text style={styles.modalButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonPrimary]}
+                    onPress={closeTimePicker}
+                  >
+                    <Text style={styles.modalButtonTextPrimary}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.modalTitle}>
+                  {editingField === 'startTime' ? 'Select Start Time' : 'Select End Time'}
+                </Text>
+                <DateTimePicker
+                  value={tempTime}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleTimeChange}
+                  minuteInterval={15}
+                />
+                {Platform.OS === 'ios' && (
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity style={styles.modalButton} onPress={closeTimePicker}>
+                      <Text style={styles.modalButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modalButton, styles.modalButtonPrimary]}
+                      onPress={closeTimePicker}
+                    >
+                      <Text style={styles.modalButtonTextPrimary}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -449,6 +640,17 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 6,
   },
+  timeValueEditable: {
+    fontSize: 16,
+    color: '#6366F1',
+    fontWeight: '500',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
   copyButton: {
     paddingVertical: 8,
     alignItems: 'center',
@@ -460,5 +662,97 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     marginTop: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  dayPickerScroll: {
+    maxHeight: 300,
+  },
+  dayOption: {
+    padding: 16,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  dayOptionText: {
+    fontSize: 16,
+    color: '#1F2937',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 14,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonPrimary: {
+    backgroundColor: '#6366F1',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  modalButtonTextPrimary: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  modalCloseButton: {
+    marginTop: 16,
+    padding: 14,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCloseButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  webTimePickerContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  webTimeInput: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#1F2937',
+    borderWidth: 2,
+    borderColor: '#6366F1',
+    borderRadius: 8,
+    padding: 16,
+    textAlign: 'center',
+    minWidth: 120,
+    backgroundColor: '#FFFFFF',
+  },
+  webTimeHint: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 8,
   },
 });

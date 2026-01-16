@@ -57,6 +57,11 @@ export const saveMentorAvailability = async (
   availability: Omit<MentorAvailability, 'id' | 'mentorId' | 'updatedAt'>,
 ): Promise<MentorAvailability> => {
   const currentUser = getCurrentUser();
+  console.log('[scheduling] Current user:', currentUser);
+  console.log('[scheduling] Mentor ID:', mentorId);
+  console.log('[scheduling] User role:', currentUser?.role);
+  console.log('[scheduling] Account suspended:', currentUser?.accountSuspended);
+  
   if (!currentUser || currentUser.id !== mentorId) {
     throw new Error('Unauthorized');
   }

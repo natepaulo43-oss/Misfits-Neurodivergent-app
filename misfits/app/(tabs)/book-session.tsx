@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Screen, Button } from '../../components';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -54,6 +55,14 @@ export default function BookSessionScreen() {
   useEffect(() => {
     loadMentorAvailability();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (selectedDate) {
+        loadAvailableSlots();
+      }
+    }, [selectedDate, selectedDuration])
+  );
 
   useEffect(() => {
     if (selectedDate) {
