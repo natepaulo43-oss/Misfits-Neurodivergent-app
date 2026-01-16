@@ -104,6 +104,15 @@ export default function ProfileScreen() {
           style={styles.actionButton}
         />
 
+        {role === 'mentor' && (
+          <Button
+            title="Manage Availability"
+            variant="secondary"
+            onPress={() => router.push('/(tabs)/availability-setup')}
+            style={styles.actionButton}
+          />
+        )}
+
         <Button
           title="Log Out"
           variant="outline"
