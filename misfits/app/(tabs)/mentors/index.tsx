@@ -7,6 +7,8 @@ import { Mentor, MentorMatchResult, MentorMatchMetadata, MessageThread } from '.
 import { useAuth } from '../../../context/AuthContext';
 import { fetchMentors } from '../../../services/mentors';
 import { fetchMentorMatches } from '../../../services/matching';
+import { computeLocalMatches, LocalMatchResult } from '../../../services/matchingLocal';
+import { batchCheckMentorAvailability } from '../../../services/availabilityCheck';
 import { fetchThreads, startNewThread } from '../../../services/messages';
 import { getOtherParticipantName } from '../../../data/mockMessages';
 
@@ -24,6 +26,7 @@ export default function MentorMatchesScreen() {
   const { user, updateProfile } = useAuth();
   const [mentors, setMentors] = useState<Mentor[]>([]);
   const [matches, setMatches] = useState<MentorMatchResult[]>([]);
+  const [localMatches, setLocalMatches] = useState<LocalMatchResult[]>([]);
   const [metadata, setMetadata] = useState<MentorMatchMetadata | null>(null);
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,9 +72,24 @@ export default function MentorMatchesScreen() {
       setMentors(mentorData);
 
       const mentorsWithProfiles = mentorData.filter(m => m.mentorProfile);
-      const result = await fetchMentorMatches(user.studentProfile, mentorsWithProfiles);
-      setMatches(result.matches);
-      setMetadata(result.metadata);
+      
+      const mentorIds = mentorsWithProfiles.map(m => m.id);
+      const availabilityMap = await batchCheckMentorAvailability(mentorIds);
+      
+      const localResult = await computeLocalMatches(
+        user.studentProfile,
+        mentorsWithProfiles,
+        availabilityMap
+      );
+      setLocalMatches(localResult.matches);
+      
+      try {
+        const result = await fetchMentorMatches(user.studentProfile, mentorsWithProfiles);
+        setMatches(result.matches);
+        setMetadata(result.metadata);
+      } catch (apiErr) {
+        console.warn('External matching API unavailable, using local matching only', apiErr);
+      }
     } catch (err) {
       console.error('Failed to load matches', err);
       setMatchesError('We could not load your matches right now. Please try again soon.');
@@ -190,6 +208,73 @@ export default function MentorMatchesScreen() {
     } finally {
       setRequestingIntroId(null);
     }
+  };
+
+  const renderLocalMatchCard = (match: LocalMatchResult) => {
+    const mentor = mentorLookup[match.mentorId];
+    if (!mentor) return null;
+
+    const mentorDetails = mentor.mentorProfile;
+    const tags =
+      mentorDetails?.focusAreas?.slice(0, 3) ||
+      mentorDetails?.expertiseAreas?.slice(0, 3) ||
+      mentor.expertise.slice(0, 3);
+
+    return (
+      <Card key={match.mentorId} style={styles.matchCard}>
+        <View style={styles.matchHeader}>
+          <Avatar name={mentor.name} uri={mentor.profileImage} size="medium" />
+          <View style={styles.matchHeaderText}>
+            <Text style={styles.mentorName}>{mentor.name}</Text>
+            <Text style={styles.mentorRole} numberOfLines={1}>
+              {mentorDetails?.currentRole || mentor.bio}
+            </Text>
+            <View style={styles.availabilityBadge}>
+              <View style={[
+                styles.availabilityDot,
+                match.isCurrentlyAvailable ? styles.availableDot : styles.unavailableDot
+              ]} />
+              <Text style={[
+                styles.availabilityText,
+                match.isCurrentlyAvailable ? styles.availableText : styles.unavailableText
+              ]}>
+                {match.isCurrentlyAvailable ? 'Available this week' : 'No slots this week'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.tagRow}>
+          {tags.map(tag => (
+            <Tag key={tag} label={tag} />
+          ))}
+        </View>
+
+        <View style={styles.matchReasons}>
+          {match.reasons.slice(0, 3).map((reason, idx) => (
+            <View key={`${match.mentorId}-${idx}`} style={styles.reasonRow}>
+              <View style={styles.reasonIndicator} />
+              <Text style={styles.reasonText}>{reason}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.cardActions}>
+          <Button
+            title="View Profile"
+            variant="secondary"
+            onPress={() => router.push(`/(tabs)/mentors/${match.mentorId}`)}
+            style={styles.cardButton}
+          />
+          <Button
+            title="Request Intro"
+            onPress={() => handleRequestIntro(match.mentorId)}
+            loading={requestingIntroId === match.mentorId}
+            style={styles.cardButton}
+          />
+        </View>
+      </Card>
+    );
   };
 
   const renderMatchCard = (match: MentorMatchResult) => {
@@ -355,6 +440,10 @@ export default function MentorMatchesScreen() {
     );
   }
 
+  const bestFits = localMatches.slice(0, 5);
+  const bestFitIds = new Set(bestFits.map(m => m.mentorId));
+  const remainingMentors = mentors.filter(m => !bestFitIds.has(m.id));
+
   return (
     <Screen
       scroll
@@ -365,7 +454,7 @@ export default function MentorMatchesScreen() {
         <Text style={styles.pageEyebrow}>Mentor Matches</Text>
         <Text style={styles.pageTitle}>We found mentors who fit how you learn and communicate.</Text>
         <Text style={styles.pageSubtitle}>
-          Choose who feels right for you. We’ll never rank you or rush your decision.
+          Choose who feels right for you. We'll never rank you or rush your decision.
         </Text>
       </View>
 
@@ -376,28 +465,33 @@ export default function MentorMatchesScreen() {
         </Card>
       ) : null}
 
-      {metadata?.disclaimer ? (
-        <View style={styles.disclaimer}>
-          <Text style={styles.disclaimerText}>{metadata.disclaimer}</Text>
-        </View>
-      ) : null}
-
-      <View style={styles.matchesSection}>
-        {matches.length === 0 ? (
-          <Card>
-            <Text style={styles.noMatchesTitle}>We’re still searching</Text>
-            <Text style={styles.noMatchesCopy}>
-              We’ll notify you as soon as mentors with compatible availability join. Try refreshing later.
+      {bestFits.length > 0 ? (
+        <>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Best Fits for You</Text>
+            <Text style={styles.sectionSubtitle}>
+              Mentors who match your goals and preferences, sorted by availability
             </Text>
-            <Button title="Refresh" variant="outline" onPress={loadMatches} style={styles.primaryButton} />
-          </Card>
-        ) : (
-          matches.slice(0, 5).map(renderMatchCard)
-        )}
-      </View>
+          </View>
+          <View style={styles.matchesSection}>
+            {bestFits.map(renderLocalMatchCard)}
+          </View>
+        </>
+      ) : (
+        <Card>
+          <Text style={styles.noMatchesTitle}>We're still searching</Text>
+          <Text style={styles.noMatchesCopy}>
+            We'll notify you as soon as mentors with compatible availability join. Try refreshing later.
+          </Text>
+          <Button title="Refresh" variant="outline" onPress={loadMatches} style={styles.primaryButton} />
+        </Card>
+      )}
 
       <View style={styles.secondarySection}>
         <Text style={styles.sectionTitle}>Want to explore more mentors?</Text>
+        <Text style={styles.sectionSubtitle}>
+          Browse all {remainingMentors.length} other approved mentors
+        </Text>
         <Button
           title="Browse all mentors"
           variant="outline"
@@ -601,5 +695,40 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     marginTop: spacing.md,
+  },
+  sectionHeader: {
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  sectionSubtitle: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  availabilityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  availabilityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  availableDot: {
+    backgroundColor: colors.success || '#10b981',
+  },
+  unavailableDot: {
+    backgroundColor: colors.textMuted,
+  },
+  availabilityText: {
+    ...typography.caption,
+    fontWeight: '600',
+  },
+  availableText: {
+    color: colors.success || '#10b981',
+  },
+  unavailableText: {
+    color: colors.textMuted,
   },
 });

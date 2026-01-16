@@ -37,7 +37,7 @@ export default function HomeScreen() {
             style={styles.button}
           />
           <Button
-            title="Library"
+            title="Curated Content Library"
             onPress={() => router.push('/(tabs)/curated')}
             size="large"
             variant="outline"
