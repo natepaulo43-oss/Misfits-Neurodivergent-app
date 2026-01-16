@@ -28,11 +28,14 @@ export const convertLocalTimeToUTC = (
   timezone: string,
 ): Date => {
   const { hours, minutes } = parseTimeString(timeStr);
-  const localDate = new Date(date);
-  localDate.setHours(hours, minutes, 0, 0);
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
   
-  const utcTimestamp = localDate.getTime();
-  return new Date(utcTimestamp);
+  const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${timeStr}:00`;
+  const localDate = new Date(dateString);
+  
+  return localDate;
 };
 
 export const convertUTCToLocalTime = (utcDate: Date, timezone: string): Date => {

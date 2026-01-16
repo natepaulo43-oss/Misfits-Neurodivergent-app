@@ -48,6 +48,11 @@ service cloud.firestore {
         (userData.messagingDisabled != true && userData.accountSuspended != true)
       );
     }
+
+    function canManageMentorAvailability(mentorId) {
+      return isSignedIn() &&
+        isOwner(mentorId);
+    }
     
     // ============================================
     // Users Collection
@@ -168,10 +173,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       
       // Mentors can create/update their own availability
-      allow create, update: if isSignedIn() && 
-        isOwner(mentorId) && 
-        getUserRole() == 'mentor' &&
-        isAccountActive();
+      allow create, update: if canManageMentorAvailability(mentorId);
       
       // Admins can read/write all availability
       allow read, write: if isAdmin();
