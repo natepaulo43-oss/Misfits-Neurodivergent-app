@@ -69,18 +69,36 @@ const sanitizeMessage = (text: string): string => {
 };
 
 export const fetchThreads = async (userId: string): Promise<MessageThread[]> => {
-  if (!userId) return [];
+  if (!userId) {
+    console.log('[fetchThreads] No userId provided');
+    return [];
+  }
 
   try {
+    console.log('[fetchThreads] Querying threads for userId:', userId);
     const threadsQuery = query(threadsCollection, where('participantIds', 'array-contains', userId));
     const snapshot = await getDocs(threadsQuery);
-    const threads = snapshot.docs.map(docSnap => mapThreadDoc(docSnap));
+    console.log('[fetchThreads] Found', snapshot.docs.length, 'thread documents');
+    
+    const threads = snapshot.docs.map(docSnap => {
+      const thread = mapThreadDoc(docSnap);
+      console.log('[fetchThreads] Mapped thread:', thread.id, {
+        participantIds: thread.participantIds,
+        participantNames: thread.participantNames,
+        lastMessage: thread.lastMessage,
+        lastMessageTime: thread.lastMessageTime,
+      });
+      return thread;
+    });
 
-    return threads.sort((a, b) => {
+    const sorted = threads.sort((a, b) => {
       const aTime = a.lastMessageTime || a.updatedAt || '';
       const bTime = b.lastMessageTime || b.updatedAt || '';
       return new Date(bTime).getTime() - new Date(aTime).getTime();
     });
+    
+    console.log('[fetchThreads] Returning', sorted.length, 'sorted threads');
+    return sorted;
   } catch (error) {
     console.error('[messages] Failed to fetch threads', error);
     throw error instanceof Error ? error : new Error('Unable to load message threads');

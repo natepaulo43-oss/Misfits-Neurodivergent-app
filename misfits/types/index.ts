@@ -238,17 +238,81 @@ export interface MatchRecord {
   notes?: string;
 }
 
-export type SessionStatus = 'requested' | 'accepted' | 'declined' | 'completed' | 'canceled';
+export type SessionStatus = 'pending' | 'confirmed' | 'declined' | 'reschedule_proposed' | 'cancelled' | 'completed';
 
-export interface SessionRecord {
+export type ConnectionPreference = 'chat' | 'phone' | 'video' | 'other';
+
+export interface WeeklyAvailabilityBlock {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+}
+
+export interface AvailabilityException {
+  date: string;
+  type: 'blocked' | 'override';
+  blocks?: WeeklyAvailabilityBlock[];
+}
+
+export interface MentorAvailability {
   id: string;
-  matchId?: string;
+  mentorId: string;
+  timezone: string;
+  sessionDurations: number[];
+  bufferMinutes: number;
+  maxSessionsPerDay?: number;
+  weeklyBlocks: WeeklyAvailabilityBlock[];
+  exceptions: AvailabilityException[];
+  updatedAt: string;
+}
+
+export interface RescheduleOption {
+  start: string;
+  end: string;
+}
+
+export interface ReminderState {
+  sent24h: boolean;
+  sent1h: boolean;
+  scheduled24h?: string;
+  scheduled1h?: string;
+}
+
+export interface Session {
+  id: string;
   studentId: string;
   mentorId: string;
-  scheduledFor: string;
   status: SessionStatus;
+  requestedStart: string;
+  requestedEnd: string;
+  confirmedStart?: string;
+  confirmedEnd?: string;
+  studentTimezone: string;
+  mentorTimezone: string;
+  connectionPreference: ConnectionPreference;
+  studentNotes?: string;
+  mentorResponseReason?: string;
+  rescheduleOptions?: RescheduleOption[];
+  chatId?: string;
+  createdAt: string;
+  updatedAt: string;
+  reminderState?: ReminderState;
+}
+
+export interface SessionNote {
+  id: string;
+  sessionId: string;
+  mentorId: string;
+  note: string;
+  followUps?: string;
   createdAt: string;
   updatedAt?: string;
-  topic?: string;
-  notes?: string;
 }
+
+export interface TimeSlot {
+  start: Date;
+  end: Date;
+  available: boolean;
+}
+
+export type SessionRecord = Session;
