@@ -140,6 +140,27 @@ service cloud.firestore {
     }
     
     // ============================================
+    // Mentor Availability Collection
+    // ============================================
+    
+    match /mentorAvailability/{mentorId} {
+      // Anyone can read mentor availability (for booking)
+      allow read: if isSignedIn();
+      
+      // Mentors can create/update their own availability
+      allow create, update: if isSignedIn() && 
+        isOwner(mentorId) && 
+        getUserRole() == 'mentor' &&
+        isAccountActive();
+      
+      // Admins can read/write all availability
+      allow read, write: if isAdmin();
+      
+      // No one can delete availability (preserve data)
+      allow delete: if false;
+    }
+    
+    // ============================================
     // Sessions Collection
     // ============================================
     
@@ -150,17 +171,66 @@ service cloud.firestore {
         request.auth.uid == resource.data.mentorId
       );
       
-      // Students and mentors can update their own sessions (status changes)
-      allow update: if isSignedIn() && isAccountActive() && (
-        request.auth.uid == resource.data.studentId ||
-        request.auth.uid == resource.data.mentorId
-      );
+      // Students can create session requests (where they are the student)
+      allow create: if isSignedIn() && 
+        isAccountActive() &&
+        request.auth.uid == request.resource.data.studentId &&
+        getUserRole() == 'student';
+      
+      // Students can update limited fields on their sessions
+      // (accept reschedule, cancel)
+      allow update: if isSignedIn() && 
+        isAccountActive() &&
+        request.auth.uid == resource.data.studentId &&
+        (
+          // Can only update status to cancelled or confirmed (from reschedule_proposed)
+          (request.resource.data.status == 'cancelled') ||
+          (resource.data.status == 'reschedule_proposed' && 
+           request.resource.data.status == 'confirmed')
+        );
+      
+      // Mentors can update their sessions
+      // (accept, decline, propose reschedule, mark complete, cancel)
+      allow update: if isSignedIn() && 
+        isAccountActive() &&
+        request.auth.uid == resource.data.mentorId &&
+        getUserRole() == 'mentor';
       
       // Admins can read all sessions
       allow read: if isAdmin();
       
       // Admins can create, update, and delete sessions
       allow create, update, delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Session Notes Collection (Mentor Private)
+    // ============================================
+    
+    match /sessionNotes/{noteId} {
+      // Only the mentor who created the note can read it
+      allow read: if isSignedIn() && 
+        request.auth.uid == resource.data.mentorId;
+      
+      // Mentors can create notes for their sessions
+      allow create: if isSignedIn() && 
+        isAccountActive() &&
+        request.auth.uid == request.resource.data.mentorId &&
+        getUserRole() == 'mentor';
+      
+      // Mentors can update their own notes
+      allow update: if isSignedIn() && 
+        isAccountActive() &&
+        request.auth.uid == resource.data.mentorId;
+      
+      // Admins can read all notes (for oversight)
+      allow read: if isAdmin();
+      
+      // Admins can create/update notes
+      allow create, update: if isAdmin();
+      
+      // No one can delete notes (preserve audit trail)
+      allow delete: if false;
     }
     
     // ============================================

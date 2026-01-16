@@ -8,12 +8,6 @@ import { colors, spacing, typography } from '../../constants/theme';
 export default function HomeScreen() {
   const { user } = useAuth();
   const isMentor = user?.role === 'mentor';
-  const primaryCtaLabel = isMentor ? 'Your requests' : 'Browse Mentors';
-  const primaryCtaTarget = isMentor ? '/(tabs)/mentors' : '/(tabs)/mentors';
-  const secondaryCtaLabel = isMentor ? 'Stay connected' : 'Browse Books';
-  const secondaryCtaTarget = isMentor ? '/(tabs)/messages' : '/(tabs)/books';
-  const secondaryVariant = isMentor ? 'secondary' : 'outline';
-  const showMentorBooksCta = isMentor;
 
   return (
     <Screen scroll align="left">
@@ -21,7 +15,7 @@ export default function HomeScreen() {
         <Text style={styles.welcome}>Welcome{user?.name ? `, ${user.name}` : ''}!</Text>
         <Text style={styles.description}>
           {isMentor
-            ? 'Thanks for offering your time and insight. Check incoming introductions and reply when you’re ready.'
+            ? "Thanks for offering your time and insight. Check incoming introductions and reply when you're ready."
             : 'Misfits connects neurodiverse students with mentors who understand their learning journey. Browse mentors or explore our curated book collection.'}
         </Text>
       </Card>
@@ -30,27 +24,25 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>Quick Access</Text>
         <View style={styles.buttonStack}>
           <Button
-            title={primaryCtaLabel}
-            onPress={() => router.push(primaryCtaTarget)}
+            title="Browse Mentors"
+            onPress={() => router.push('/(tabs)/mentors')}
             size="large"
             style={styles.button}
           />
           <Button
-            title={secondaryCtaLabel}
-            onPress={() => router.push(secondaryCtaTarget)}
+            title={isMentor ? 'Messages' : 'Browse Books'}
+            onPress={() => router.push(isMentor ? '/(tabs)/messages' : '/(tabs)/books')}
             size="large"
-            variant={secondaryVariant}
+            variant="secondary"
             style={styles.button}
           />
-          {showMentorBooksCta ? (
-            <Button
-              title="Browse Books"
-              onPress={() => router.push('/(tabs)/books')}
-              size="large"
-              variant="outline"
-              style={styles.button}
-            />
-          ) : null}
+          <Button
+            title="Library"
+            onPress={() => router.push('/(tabs)/curated')}
+            size="large"
+            variant="outline"
+            style={styles.button}
+          />
         </View>
       </View>
     </Screen>
