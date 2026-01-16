@@ -1,11 +1,13 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { Change, EventContext } from 'firebase-functions';
+import { QueryDocumentSnapshot } from 'firebase-functions/v1/firestore';
 
 const db = admin.firestore();
 
 export const onSessionCreated = functions.firestore
   .document('sessions/{sessionId}')
-  .onCreate(async (snapshot, context) => {
+  .onCreate(async (snapshot: QueryDocumentSnapshot, context: EventContext) => {
     const session = snapshot.data();
     const sessionId = context.params.sessionId;
 
@@ -21,7 +23,9 @@ export const onSessionCreated = functions.firestore
       const mentorData = mentorDoc.data();
       const studentData = studentDoc.data();
 
-      console.log(`[Notification Stub] New session request from ${studentData?.name} to ${mentorData?.name}`);
+      console.log(
+        `[Notification Stub][Session ${sessionId}] New session request from ${studentData?.name} to ${mentorData?.name}`
+      );
       
       return null;
     } catch (error) {
@@ -32,7 +36,7 @@ export const onSessionCreated = functions.firestore
 
 export const onSessionStatusChanged = functions.firestore
   .document('sessions/{sessionId}')
-  .onUpdate(async (change, context) => {
+  .onUpdate(async (change: Change<QueryDocumentSnapshot>, context: EventContext) => {
     const before = change.before.data();
     const after = change.after.data();
     const sessionId = context.params.sessionId;
@@ -73,11 +77,14 @@ export const onSessionStatusChanged = functions.firestore
           recipientName = studentData?.name || 'Student';
           notificationMessage = `${mentorData?.name} proposed alternative times for your session.`;
           break;
-        case 'cancelled':
-          const cancelledBy = before.status === 'confirmed' ? 'other party' : 'requester';
-          recipientId = after.mentorId === before.updatedBy ? after.studentId : after.mentorId;
-          notificationMessage = `Session has been cancelled.`;
+        case 'cancelled': {
+          const cancelledByMentor = before.updatedBy === after.mentorId;
+          const cancelledBy = cancelledByMentor ? mentorData?.name || 'Mentor' : studentData?.name || 'Student';
+          recipientId = cancelledByMentor ? after.studentId : after.mentorId;
+          recipientName = cancelledByMentor ? studentData?.name || 'Student' : mentorData?.name || 'Mentor';
+          notificationMessage = `Session ${sessionId} has been cancelled by ${cancelledBy}.`;
           break;
+        }
         case 'completed':
           recipientId = after.studentId;
           recipientName = studentData?.name || 'Student';
@@ -86,7 +93,8 @@ export const onSessionStatusChanged = functions.firestore
       }
 
       if (recipientId && notificationMessage) {
-        console.log(`[Notification Stub] To ${recipientName}: ${notificationMessage}`);
+        const nameOrFallback = recipientName || recipientId;
+        console.log(`[Notification Stub][Session ${sessionId}] To ${nameOrFallback}: ${notificationMessage}`);
       }
 
       return null;
@@ -98,7 +106,7 @@ export const onSessionStatusChanged = functions.firestore
 
 export const scheduleSessionReminders = functions.pubsub
   .schedule('every 1 hours')
-  .onRun(async (context) => {
+  .onRun(async (context: EventContext) => {
     const now = new Date();
     const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const in1Hour = new Date(now.getTime() + 60 * 60 * 1000);
