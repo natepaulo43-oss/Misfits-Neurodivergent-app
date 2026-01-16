@@ -220,7 +220,9 @@ export default function StudentOnboardingScreen() {
 
       router.replace('/(tabs)/home');
     } catch (error) {
-      showAlert('Error', 'Failed to save your profile. Please try again.');
+      console.error('Student profile save error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showAlert('Error', `Failed to save your profile: ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }

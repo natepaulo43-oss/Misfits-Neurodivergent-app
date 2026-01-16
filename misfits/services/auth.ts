@@ -199,76 +199,85 @@ export const updateUserProfile = async (
   userId: string,
   updates: Partial<User>,
 ): Promise<User> => {
-  const allowedUpdates: FirestoreUserData = {};
+  try {
+    const allowedUpdates: FirestoreUserData = {};
 
-  if (typeof updates.name === 'string') allowedUpdates.name = updates.name;
-  if (typeof updates.email === 'string') allowedUpdates.email = updates.email;
-  if (typeof updates.role === 'string' || updates.role === null) {
-    allowedUpdates.role = updates.role as UserRole | null;
-  }
-  if (typeof updates.pendingRole === 'string' || updates.pendingRole === null) {
-    allowedUpdates.pendingRole = updates.pendingRole === 'mentor' ? 'mentor' : null;
-  }
-  if (typeof updates.mentorApplicationStatus === 'string') {
-    const allowedStatuses: MentorApplicationStatus[] = [
-      'not_requested',
-      'draft',
-      'submitted',
-      'approved',
-      'rejected',
-    ];
-    if (allowedStatuses.includes(updates.mentorApplicationStatus as MentorApplicationStatus)) {
-      allowedUpdates.mentorApplicationStatus = updates.mentorApplicationStatus as MentorApplicationStatus;
+    if (typeof updates.name === 'string') allowedUpdates.name = updates.name;
+    if (typeof updates.email === 'string') allowedUpdates.email = updates.email;
+    if (typeof updates.role === 'string' || updates.role === null) {
+      allowedUpdates.role = updates.role as UserRole | null;
     }
-  }
-  if (typeof updates.mentorApplicationSubmittedAt === 'string') {
-    allowedUpdates.mentorApplicationSubmittedAt = updates.mentorApplicationSubmittedAt;
-  }
-  if (typeof updates.mentorApplicationAdminNotes === 'string') {
-    allowedUpdates.mentorApplicationAdminNotes = updates.mentorApplicationAdminNotes;
-  }
-  if (typeof updates.mentorApplicationAppealText === 'string') {
-    allowedUpdates.mentorApplicationAppealText = updates.mentorApplicationAppealText;
-  }
-  if (typeof updates.mentorApplicationAppealSubmittedAt === 'string') {
-    allowedUpdates.mentorApplicationAppealSubmittedAt = updates.mentorApplicationAppealSubmittedAt;
-  }
-  if (Array.isArray(updates.interests)) allowedUpdates.interests = updates.interests;
-  if (Array.isArray(updates.learningDifferences)) {
-    allowedUpdates.learningDifferences = updates.learningDifferences;
-  }
-  if (typeof updates.onboardingCompleted === 'boolean') {
-    allowedUpdates.onboardingCompleted = updates.onboardingCompleted;
-  }
-  if (updates.studentProfile) {
-    allowedUpdates.studentProfile = updates.studentProfile;
-  }
-  if (updates.mentorProfile) {
-    allowedUpdates.mentorProfile = updates.mentorProfile;
-  }
-  if (typeof updates.accountSuspended === 'boolean') {
-    allowedUpdates.accountSuspended = updates.accountSuspended;
-  }
-  if (typeof updates.suspensionReason === 'string') {
-    allowedUpdates.suspensionReason = updates.suspensionReason;
-  }
-  if (typeof updates.messagingDisabled === 'boolean') {
-    allowedUpdates.messagingDisabled = updates.messagingDisabled;
-  }
-  if (typeof updates.mentorMatchingDisabled === 'boolean') {
-    allowedUpdates.mentorMatchingDisabled = updates.mentorMatchingDisabled;
-  }
+    if (typeof updates.pendingRole === 'string' || updates.pendingRole === null) {
+      allowedUpdates.pendingRole = updates.pendingRole === 'mentor' ? 'mentor' : null;
+    }
+    if (typeof updates.mentorApplicationStatus === 'string') {
+      const allowedStatuses: MentorApplicationStatus[] = [
+        'not_requested',
+        'draft',
+        'submitted',
+        'approved',
+        'rejected',
+      ];
+      if (allowedStatuses.includes(updates.mentorApplicationStatus as MentorApplicationStatus)) {
+        allowedUpdates.mentorApplicationStatus = updates.mentorApplicationStatus as MentorApplicationStatus;
+      }
+    }
+    if (typeof updates.mentorApplicationSubmittedAt === 'string') {
+      allowedUpdates.mentorApplicationSubmittedAt = updates.mentorApplicationSubmittedAt;
+    }
+    if (typeof updates.mentorApplicationAdminNotes === 'string') {
+      allowedUpdates.mentorApplicationAdminNotes = updates.mentorApplicationAdminNotes;
+    }
+    if (typeof updates.mentorApplicationAppealText === 'string') {
+      allowedUpdates.mentorApplicationAppealText = updates.mentorApplicationAppealText;
+    }
+    if (typeof updates.mentorApplicationAppealSubmittedAt === 'string') {
+      allowedUpdates.mentorApplicationAppealSubmittedAt = updates.mentorApplicationAppealSubmittedAt;
+    }
+    if (Array.isArray(updates.interests)) allowedUpdates.interests = updates.interests;
+    if (Array.isArray(updates.learningDifferences)) {
+      allowedUpdates.learningDifferences = updates.learningDifferences;
+    }
+    if (typeof updates.onboardingCompleted === 'boolean') {
+      allowedUpdates.onboardingCompleted = updates.onboardingCompleted;
+    }
+    if (updates.studentProfile) {
+      allowedUpdates.studentProfile = updates.studentProfile;
+    }
+    if (updates.mentorProfile) {
+      allowedUpdates.mentorProfile = updates.mentorProfile;
+    }
+    if (typeof updates.accountSuspended === 'boolean') {
+      allowedUpdates.accountSuspended = updates.accountSuspended;
+    }
+    if (typeof updates.suspensionReason === 'string') {
+      allowedUpdates.suspensionReason = updates.suspensionReason;
+    }
+    if (typeof updates.messagingDisabled === 'boolean') {
+      allowedUpdates.messagingDisabled = updates.messagingDisabled;
+    }
+    if (typeof updates.mentorMatchingDisabled === 'boolean') {
+      allowedUpdates.mentorMatchingDisabled = updates.mentorMatchingDisabled;
+    }
 
-  const cleanedUpdates = removeUndefinedFields(allowedUpdates);
+    const cleanedUpdates = removeUndefinedFields(allowedUpdates);
 
-  if (cleanedUpdates && Object.keys(cleanedUpdates).length > 0) {
-    await setDoc(userDocRef(userId), cleanedUpdates, { merge: true });
+    console.log('Updating user profile:', { userId, cleanedUpdates });
+
+    if (cleanedUpdates && Object.keys(cleanedUpdates).length > 0) {
+      await setDoc(userDocRef(userId), cleanedUpdates, { merge: true });
+    } else {
+      console.warn('No valid updates to apply');
+    }
+
+    const snapshot = await getDoc(userDocRef(userId));
+    const data = snapshot.exists() ? (snapshot.data() as FirestoreUserData) : {};
+    const fallback = auth.currentUser && auth.currentUser.uid === userId ? auth.currentUser : null;
+
+    currentUser = buildUserFromData(userId, data, fallback);
+    return currentUser;
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
   }
-
-  const snapshot = await getDoc(userDocRef(userId));
-  const data = snapshot.exists() ? (snapshot.data() as FirestoreUserData) : {};
-  const fallback = auth.currentUser && auth.currentUser.uid === userId ? auth.currentUser : null;
-
-  currentUser = buildUserFromData(userId, data, fallback);
-  return currentUser;
 };

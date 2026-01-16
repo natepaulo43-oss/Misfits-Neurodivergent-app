@@ -1,11 +1,12 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 
 const getEnv = (key: string): string => {
   const value = process.env[key];
   if (!value) {
-    throw new Error(`Missing environment variable: ${key}`);
+    console.error(`Missing environment variable: ${key}`);
+    throw new Error(`Missing environment variable: ${key}. Please check your .env file.`);
   }
   return value;
 };
@@ -19,9 +20,13 @@ const firebaseConfig = {
   appId: getEnv('EXPO_PUBLIC_FIREBASE_APP_ID'),
 };
 
-const app = initializeApp(firebaseConfig);
+console.log('Initializing Firebase with project:', firebaseConfig.projectId);
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export { app, firebaseConfig };
+const app: FirebaseApp = initializeApp(firebaseConfig);
+const auth: Auth = getAuth(app);
+const db: Firestore = getFirestore(app);
+
+console.log('Firebase initialized successfully');
+
+export { auth, db, app };
 export default app;
