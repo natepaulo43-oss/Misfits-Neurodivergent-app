@@ -31,14 +31,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    ...(Platform.OS === 'web'
-      ? { boxShadow: '0px 4px 12px rgba(15, 23, 42, 0.05)' }
-      : {
-          shadowColor: '#0F172A',
-          shadowOpacity: 0.05,
-          shadowOffset: { width: 0, height: 4 },
-          shadowRadius: 12,
-          elevation: 1,
-        }),
-  },
+    boxShadow: '0px 4px 12px rgba(15, 23, 42, 0.05)',
+    elevation: 1,
+  } as any,
 });
