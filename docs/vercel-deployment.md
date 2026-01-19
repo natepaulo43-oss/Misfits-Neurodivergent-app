@@ -2,11 +2,11 @@
 
 1. Install dependencies inside the `misfits` workspace before building:
    ```bash
-   npm install
+   npm install --prefix misfits
    ```
 2. Build the static site used by Vercel:
    ```bash
-   npm run vercel-build
+   npm run vercel-build --prefix misfits
    ```
 3. Deploy from the repo root with Vercel CLI (or hook the GitHub repo to Vercel):
    ```bash
