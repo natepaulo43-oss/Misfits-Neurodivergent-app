@@ -1,14 +1,5 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "misfits/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
   "installCommand": "cd misfits && npm install",
   "buildCommand": "cd misfits && npm run vercel-build",
   "outputDirectory": "misfits/dist",
