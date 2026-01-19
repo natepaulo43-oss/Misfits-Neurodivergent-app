@@ -1,6 +1,7 @@
 import { Mentor, StudentProfile, MentorMatchResult, MentorMatchMetadata } from '../types';
+import Constants from 'expo-constants';
 
-const MATCHING_API_URL = process.env.EXPO_PUBLIC_MATCHING_API_URL;
+const MATCHING_API_URL = Constants.expoConfig?.extra?.matchingApiUrl || process.env.EXPO_PUBLIC_MATCHING_API_URL;
 
 if (!MATCHING_API_URL) {
   console.warn(
