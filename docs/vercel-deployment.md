@@ -1,16 +1,36 @@
 # Vercel Deployment Notes
 
-1. Install dependencies inside the `misfits` workspace before building:
-   ```bash
-   npm install --prefix misfits
-   ```
-2. Build the static site used by Vercel:
-   ```bash
-   npm run vercel-build --prefix misfits
-   ```
-3. Deploy from the repo root with Vercel CLI (or hook the GitHub repo to Vercel):
+## Dashboard Configuration (Build & Development Settings)
+
+Configure these settings in your Vercel project dashboard under **Settings → Build & Development Settings**:
+
+- **Framework Preset**: Other
+- **Root Directory**: `misfits`
+- **Build Command**: `npm run vercel-build`
+- **Output Directory**: `dist`
+- **Install Command**: `npm install`
+
+## Environment Variables
+
+In **Settings → Environment Variables**, add all Firebase config variables:
+- `EXPO_PUBLIC_FIREBASE_API_KEY`
+- `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `EXPO_PUBLIC_FIREBASE_PROJECT_ID`
+- `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `EXPO_PUBLIC_FIREBASE_APP_ID`
+
+## Deployment
+
+1. Connect your GitHub repository to Vercel
+2. Vercel will auto-deploy on push to main branch
+3. Or deploy manually via CLI:
    ```bash
    vercel --prod
    ```
-4. Ensure `.env` values required by Expo/Firebase are configured in Vercel project settings (e.g., `EXPO_PUBLIC_FIREBASE_*`).
-5. For SPA routing support, the provided `vercel.json` rewrites all paths to `index.html`.
+
+## Notes
+
+- The `vercel.json` file only contains SPA rewrites (all routes → `index.html`)
+- Build commands are configured in the dashboard to enable zero-config deployment
+- Do NOT add `builds`, `installCommand`, `buildCommand`, or `outputDirectory` to `vercel.json` as they override dashboard settings
