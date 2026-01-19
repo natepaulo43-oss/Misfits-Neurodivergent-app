@@ -7,7 +7,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "vercel-build": "node node_modules/@expo/cli/build/bin/cli export -p web"
+    "debug-env": "node -e \"Object.keys(process.env).filter(k => k.startsWith('EXPO_PUBLIC_')).forEach(k => console.log(k + '=' + (process.env[k] ? 'SET' : 'MISSING')))\"",
+    "vercel-build": "npm run debug-env && node node_modules/@expo/cli/build/bin/cli export -p web"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.0",
