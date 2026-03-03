@@ -14,7 +14,7 @@ export default function Index() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  if (auth.currentUser && !auth.currentUser.emailVerified) {
+  if (auth.currentUser && !auth.currentUser.emailVerified && auth.currentUser.email !== 'REDACTED') {
     return <Redirect href="/(auth)/verify-email" />;
   }
 

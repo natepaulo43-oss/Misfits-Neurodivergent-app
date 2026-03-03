@@ -40,7 +40,7 @@ export default function LoginScreen() {
     try {
       await login(email, password);
       
-      if (auth.currentUser && !auth.currentUser.emailVerified) {
+      if (auth.currentUser && !auth.currentUser.emailVerified && auth.currentUser.email !== 'REDACTED') {
         router.replace('/(auth)/verify-email');
         return;
       }
@@ -72,7 +72,7 @@ export default function LoginScreen() {
     try {
       await loginWithGoogle();
       
-      if (auth.currentUser && !auth.currentUser.emailVerified) {
+      if (auth.currentUser && !auth.currentUser.emailVerified && auth.currentUser.email !== 'REDACTED') {
         router.replace('/(auth)/verify-email');
         return;
       }
