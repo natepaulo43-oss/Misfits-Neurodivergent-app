@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { sendEmailVerification } from 'firebase/auth';
 import { auth } from '../../services/firebase';
+import { useAuth } from '../../context/AuthContext';
 import { Button, Screen, Card } from '../../components';
 import { colors, spacing, typography } from '../../constants/theme';
 
 export default function VerifyEmailScreen() {
+  const { user: appUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -105,14 +107,42 @@ export default function VerifyEmailScreen() {
     try {
       await user.reload();
       
-      if (user.emailVerified) {
+      // Reviewer test account bypass (for App Store review)
+      const isReviewerAccount = user.email === 'REDACTED';
+      const isVerified = user.emailVerified || isReviewerAccount;
+      
+      if (isVerified) {
+        // Determine the correct route based on user's role status
+        let nextRoute = '/';
+        
+        if (appUser) {
+          if (!appUser.role) {
+            // User hasn't selected a role yet
+            if (appUser.pendingRole === 'mentor') {
+              if (appUser.mentorApplicationStatus === 'submitted') {
+                nextRoute = '/(onboarding)/mentor-submitted';
+              } else {
+                nextRoute = '/(onboarding)/mentor';
+              }
+            } else {
+              nextRoute = '/(auth)/role-selection';
+            }
+          } else if (appUser.role === 'admin') {
+            nextRoute = '/(admin)';
+          } else if (!appUser.onboardingCompleted && appUser.role === 'student') {
+            nextRoute = '/(onboarding)/student';
+          } else {
+            nextRoute = '/(tabs)/home';
+          }
+        }
+        
         Alert.alert(
           'Email Verified!',
           'Your email has been verified successfully. You can now continue.',
           [
             {
               text: 'Continue',
-              onPress: () => router.replace('/'),
+              onPress: () => router.replace(nextRoute),
             },
           ]
         );

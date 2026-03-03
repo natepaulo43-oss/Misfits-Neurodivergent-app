@@ -19,9 +19,10 @@ module.exports = {
       bundleIdentifier: "com.misfits.app",
       buildNumber: "1",
       infoPlist: {
-        NSCameraUsageDescription: "This app uses the camera to allow you to upload profile photos and share content.",
-        NSPhotoLibraryUsageDescription: "This app accesses your photo library to allow you to upload profile photos and share content.",
-        NSMicrophoneUsageDescription: "This app uses the microphone for voice messages and video calls.",
+        NSCameraUsageDescription: "Take a profile photo to help mentors and students recognize each other and build trust in our neurodivergent community.",
+        NSPhotoLibraryUsageDescription: "Choose a profile photo from your library to personalize your account and help others in the community connect with you.",
+        NSMicrophoneUsageDescription: "Enable voice messages to communicate more naturally with your mentor or student, especially helpful for those who prefer speaking over typing.",
+        NSLocationWhenInUseUsageDescription: "Find mentors and students near you to enable in-person meetups and local community connections.",
         CFBundleDevelopmentRegion: "en",
         CFBundleDisplayName: "Misfits",
         CFBundleExecutable: "Misfits",

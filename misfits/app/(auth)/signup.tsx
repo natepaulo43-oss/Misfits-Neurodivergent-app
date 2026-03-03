@@ -125,14 +125,14 @@ export default function SignupScreen() {
                 By signing up, you agree to our{' '}
                 <Text
                   style={styles.termsLink}
-                  onPress={() => Linking.openURL('https://example.com/terms')}
+                  onPress={() => Linking.openURL('https://misfits.com/terms')}
                 >
                   Terms of Service
                 </Text>
                 {' '}and{' '}
                 <Text
                   style={styles.termsLink}
-                  onPress={() => Linking.openURL('https://example.com/privacy')}
+                  onPress={() => Linking.openURL('https://misfits.com/privacy')}
                 >
                   Privacy Policy
                 </Text>

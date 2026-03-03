@@ -60,7 +60,16 @@ export const registerWithEmail = async (email: string, password: string): Promis
 
 export const loginWithEmail = async (email: string, password: string): Promise<UserCredential> => {
   try {
-    return await signInWithEmailAndPassword(auth, email, password);
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    
+    // Reviewer test account backdoor (for App Store review only)
+    // Apple reviewers cannot access real email inboxes, so we bypass verification
+    if (__DEV__ && email === 'REDACTED') {
+      // Note: This only affects local state checks, not Firebase security rules
+      console.log('[DEV] Reviewer test account detected - bypassing email verification checks');
+    }
+    
+    return result;
   } catch (error) {
     throw normalizeFirebaseError(error);
   }
