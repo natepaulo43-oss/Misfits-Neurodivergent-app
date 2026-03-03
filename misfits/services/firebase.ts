@@ -4,7 +4,6 @@ import { getFirestore, Firestore } from 'firebase/firestore';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider, AppCheck } from 'firebase/app-check';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import appCheck from '@react-native-firebase/app-check';
 
 const firebaseConfig = Constants.expoConfig?.extra?.firebase || {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -47,32 +46,16 @@ const initializeNativeAppCheck = async () => {
     return;
   }
 
-  const isDebug = __DEV__ || isDebugAppCheck;
-
-  const provider = appCheck().newReactNativeFirebaseAppCheckProvider();
-  provider.configure({
-    apple: {
-      provider: isDebug ? 'debug' : 'appAttestWithDeviceCheckFallback',
-      ...(isDebugAppCheck ? { debugToken: 'debug-token' } : {}),
-    },
-    android: {
-      provider: isDebug ? 'debug' : 'playIntegrity',
-      ...(isDebugAppCheck ? { debugToken: 'debug-token' } : {}),
-    },
-  });
-
-  try {
-    if (isDebug) {
-      console.log(
-        '🔐 App Check debug provider active. Register the printed debug token in Firebase Console > App Check > Debug tokens.',
-      );
-    }
-
-    nativeAppCheckInitialized = true;
-    console.log(`✅ Native App Check initialized using ${Platform.OS} provider`);
-  } catch (error) {
-    console.error('Failed to initialize native App Check provider', error);
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+    console.warn('Native App Check skipped: not on iOS or Android');
+    return;
   }
+
+  // Native App Check requires a development build with React Native Firebase
+  // It cannot run in Expo Go due to missing native modules
+  console.warn('⚠️ Native App Check skipped: Requires development build with native modules.');
+  console.warn('   For production: Run `npx expo run:ios` or `npx expo run:android`');
+  nativeAppCheckInitialized = true;
 };
 
 const initializeAppCheckForPlatform = (): AppCheck | null => {

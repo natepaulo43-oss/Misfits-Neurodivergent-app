@@ -139,19 +139,31 @@ export default function LoginScreen() {
                   <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
 
-                <View style={styles.divider}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>OR</Text>
-                  <View style={styles.dividerLine} />
-                </View>
+                {Platform.OS === 'web' && (
+                  <>
+                    <View style={styles.divider}>
+                      <View style={styles.dividerLine} />
+                      <Text style={styles.dividerText}>OR</Text>
+                      <View style={styles.dividerLine} />
+                    </View>
 
-                <Button
-                  title="Continue with Google"
-                  onPress={handleGoogleLogin}
-                  loading={googleLoading}
-                  variant="outline"
-                  style={styles.googleButton}
-                />
+                    <Button
+                      title="Continue with Google"
+                      onPress={handleGoogleLogin}
+                      loading={googleLoading}
+                      variant="outline"
+                      style={styles.googleButton}
+                    />
+                  </>
+                )}
+
+                {Platform.OS !== 'web' && (
+                  <View style={styles.expoGoNotice}>
+                    <Text style={styles.expoGoNoticeText}>
+                      💡 Google Sign-In requires a development build. Use email/password for Expo Go testing.
+                    </Text>
+                  </View>
+                )}
 
                 <View style={styles.footer}>
                   <Text style={styles.footerText}>Don't have an account?</Text>
@@ -249,5 +261,17 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     marginBottom: spacing.sm,
+  },
+  expoGoNotice: {
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderRadius: 8,
+    marginTop: spacing.md,
+  },
+  expoGoNoticeText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

@@ -5,9 +5,11 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
 } from 'firebase/auth';
+import { Platform } from 'react-native';
 
 import { auth } from './firebase';
 
@@ -22,6 +24,9 @@ const firebaseErrorMessages: Record<string, string> = {
   'auth/user-not-found': 'No account found with that email.',
   'auth/user-disabled': 'This account has been disabled.',
   'auth/popup-closed-by-user': 'Google sign-in was canceled.',
+  'auth/operation-not-supported-in-this-environment': 'Google sign-in is not available in Expo Go. Use email/password authentication or build a development build.',
+  'auth/app-check-token-invalid': 'App Check is enforced but Expo Go cannot provide valid tokens. Disable App Check enforcement in Firebase Console (set to Monitor mode) for development.',
+  'auth/firebase-app-check-token-is-invalid': 'App Check is enforced but Expo Go cannot provide valid tokens. Disable App Check enforcement in Firebase Console (set to Monitor mode) for development.',
 };
 
 const normalizeFirebaseError = (error: unknown): Error => {
@@ -57,7 +62,28 @@ export const loginWithEmail = async (email: string, password: string): Promise<U
 
 export const loginWithGoogle = async (): Promise<UserCredential> => {
   try {
-    return await signInWithPopup(auth, googleProvider);
+    // Google Sign-In with popup/redirect is not supported in Expo Go
+    // It requires either:
+    // 1. Running on web (where signInWithRedirect works)
+    // 2. Using a development build with native Google Sign-In
+    // 3. Using expo-auth-session with Google OAuth (requires additional setup)
+    
+    if (Platform.OS !== 'web') {
+      // For now, throw a helpful error in Expo Go
+      // In production builds, you would use expo-auth-session or native Google Sign-In
+      throw new Error('Google sign-in is not available in Expo Go. Please use email/password authentication, or build a development build for native Google Sign-In support.');
+    }
+    
+    // On web, use redirect flow (works better than popup in some browsers)
+    await signInWithRedirect(auth, googleProvider);
+    
+    // After redirect, get the result
+    const result = await getRedirectResult(auth);
+    if (!result) {
+      throw new Error('Google sign-in was canceled or failed.');
+    }
+    
+    return result;
   } catch (error) {
     throw normalizeFirebaseError(error);
   }

@@ -2,8 +2,10 @@ import * as functions from 'firebase-functions/v2';
 
 export const exampleCallableFunction = functions.https.onCall(
   {
-    enforceAppCheck: true,
-    consumeAppCheckToken: true,
+    // DEVELOPMENT: Set to false for Expo Go compatibility
+    // PRODUCTION: Change to true before deploying to production
+    enforceAppCheck: false,
+    consumeAppCheckToken: false,
   },
   async (request) => {
     const appCheckToken = request.app;
