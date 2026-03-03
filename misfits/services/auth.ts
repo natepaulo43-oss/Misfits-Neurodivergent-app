@@ -8,6 +8,7 @@ import {
   RecaptchaVerifier,
   getMultiFactorResolver,
   deleteUser,
+  sendEmailVerification,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -137,7 +138,7 @@ export const subscribeToAuthChanges = (
         callback(profile);
       })
       .catch(error => {
-        console.error('Failed to fetch user profile', error);
+        console.error('Failed to fetch user profile:', error instanceof Error ? error.message : 'Unknown error');
         callback(null);
       });
   });
@@ -197,9 +198,15 @@ export const signUp = async (data: SignUpData): Promise<User> => {
     try {
       await deleteUser(credential.user);
     } catch (cleanupError) {
-      console.error('Failed to delete orphaned auth user after signup error', cleanupError);
+      console.error('Failed to delete orphaned auth user after signup error:', cleanupError instanceof Error ? cleanupError.message : 'Unknown error');
     }
     throw error;
+  }
+
+  try {
+    await sendEmailVerification(credential.user);
+  } catch (error) {
+    console.warn('Failed to send verification email:', error instanceof Error ? error.message : 'Unknown error');
   }
 
   currentUser = buildUserFromData(credential.user.uid, newUserData, credential.user);
@@ -366,7 +373,7 @@ export const updateUserProfile = async (
     currentUser = buildUserFromData(userId, data, fallback);
     return currentUser;
   } catch (error) {
-    console.error('Error updating user profile:', error);
+    console.error('Error updating user profile:', error instanceof Error ? error.message : 'Unknown error');
     throw error;
   }
 };

@@ -51,8 +51,6 @@ const initializeNativeAppCheck = async () => {
     return;
   }
 
-  // Native App Check requires a development build with React Native Firebase
-  // It cannot run in Expo Go due to missing native modules
   console.warn('⚠️ Native App Check skipped: Requires development build with native modules.');
   console.warn('   For production: Run `npx expo run:ios` or `npx expo run:android`');
   nativeAppCheckInitialized = true;
@@ -63,32 +61,37 @@ const initializeAppCheckForPlatform = (): AppCheck | null => {
     return webAppCheckInstance;
   }
 
-  if (Platform.OS === 'web') {
-    const siteKey = process.env.EXPO_PUBLIC_RECAPTCHA_SITE_KEY;
+  try {
+    if (Platform.OS === 'web') {
+      const siteKey = process.env.EXPO_PUBLIC_RECAPTCHA_SITE_KEY;
 
-    if (!siteKey) {
-      console.warn(
-        'Missing EXPO_PUBLIC_RECAPTCHA_SITE_KEY. App Check cannot be initialized for web without a reCAPTCHA Enterprise site key.',
-      );
+      if (!siteKey) {
+        console.warn(
+          '⚠️ Missing EXPO_PUBLIC_RECAPTCHA_SITE_KEY. App Check cannot be initialized for web without a reCAPTCHA Enterprise site key.',
+        );
+        return null;
+      }
+
+      webAppCheckInstance = initializeAppCheck(app, {
+        provider: new ReCaptchaEnterpriseProvider(siteKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+      console.log('✅ App Check initialized for web via reCAPTCHA Enterprise');
+      return webAppCheckInstance;
+    }
+
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      console.log(`Initializing native App Check for ${Platform.OS}`);
+      void initializeNativeAppCheck();
       return null;
     }
 
-    webAppCheckInstance = initializeAppCheck(app, {
-      provider: new ReCaptchaEnterpriseProvider(siteKey),
-      isTokenAutoRefreshEnabled: true,
-    });
-    console.log('✅ App Check initialized for web via reCAPTCHA Enterprise');
-    return webAppCheckInstance;
-  }
-
-  if (Platform.OS === 'ios' || Platform.OS === 'android') {
-    console.log(`Initializing native App Check for ${Platform.OS}`);
-    void initializeNativeAppCheck();
+    console.warn('App Check initialization skipped: unsupported platform', Platform.OS);
+    return null;
+  } catch (error) {
+    console.error('Failed to initialize App Check:', error);
     return null;
   }
-
-  console.warn('App Check initialization skipped: unsupported platform', Platform.OS);
-  return null;
 };
 
 initializeAppCheckForPlatform();

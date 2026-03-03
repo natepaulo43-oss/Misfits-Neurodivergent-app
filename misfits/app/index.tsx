@@ -1,6 +1,7 @@
 import { Redirect } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { LoadingSpinner } from '../components';
+import { auth } from '../services/firebase';
 
 export default function Index() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -11,6 +12,10 @@ export default function Index() {
 
   if (!isAuthenticated || !user) {
     return <Redirect href="/(auth)/login" />;
+  }
+
+  if (auth.currentUser && !auth.currentUser.emailVerified) {
+    return <Redirect href="/(auth)/verify-email" />;
   }
 
   if (!user.role) {

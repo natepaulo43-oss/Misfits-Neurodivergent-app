@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Input, Screen, Card, MFAChallenge } from '../../components';
 import { colors, spacing, typography } from '../../constants/theme';
+import { auth } from '../../services/firebase';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -38,6 +39,12 @@ export default function LoginScreen() {
 
     try {
       await login(email, password);
+      
+      if (auth.currentUser && !auth.currentUser.emailVerified) {
+        router.replace('/(auth)/verify-email');
+        return;
+      }
+      
       router.replace('/');
     } catch (err) {
       if (err instanceof Error) {
@@ -64,6 +71,12 @@ export default function LoginScreen() {
 
     try {
       await loginWithGoogle();
+      
+      if (auth.currentUser && !auth.currentUser.emailVerified) {
+        router.replace('/(auth)/verify-email');
+        return;
+      }
+      
       router.replace('/');
     } catch (err) {
       if (err instanceof Error) {

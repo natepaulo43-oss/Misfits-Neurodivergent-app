@@ -8,3 +8,4 @@ export { EmptyState } from './EmptyState';
 export { Screen } from './Screen';
 export { AdminLayout } from './AdminLayout';
 export { MFAChallenge } from './MFAChallenge';
+export { OfflineBanner } from './OfflineBanner';

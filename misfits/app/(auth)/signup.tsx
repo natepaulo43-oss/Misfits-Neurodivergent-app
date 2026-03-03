@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Input, Screen, Card } from '../../components';
 import { colors, spacing, typography } from '../../constants/theme';
@@ -48,7 +49,7 @@ export default function SignupScreen() {
 
     try {
       await signUp(name, email, password);
-      router.replace('/(auth)/role-selection');
+      router.replace('/(auth)/verify-email');
     } catch (err) {
       console.error('Signup failed', err);
       if (err instanceof Error) {
@@ -119,6 +120,26 @@ export default function SignupScreen() {
               style={styles.button}
             />
 
+            <View style={styles.termsContainer}>
+              <Text style={styles.termsText}>
+                By signing up, you agree to our{' '}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => Linking.openURL('https://example.com/terms')}
+                >
+                  Terms of Service
+                </Text>
+                {' '}and{' '}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => Linking.openURL('https://example.com/privacy')}
+                >
+                  Privacy Policy
+                </Text>
+                .
+              </Text>
+            </View>
+
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account?</Text>
               <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
@@ -178,6 +199,20 @@ const styles = StyleSheet.create({
   },
   link: {
     ...typography.body,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  termsContainer: {
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  termsText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  termsLink: {
     color: colors.primary,
     fontWeight: '600',
   },

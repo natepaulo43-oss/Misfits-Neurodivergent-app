@@ -3,12 +3,14 @@ import { MultiFactorResolver } from 'firebase/auth';
 
 import { User, UserRole } from '../types';
 import * as authApi from '../services/auth';
+import { auth } from '../services/firebase';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isLoading: boolean;
   isAuthenticated: boolean;
+  emailVerified: boolean;
   mfaResolver: MultiFactorResolver | null;
   mfaRequired: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -29,11 +31,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [emailVerified, setEmailVerified] = useState(false);
   const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
 
   useEffect(() => {
     const unsubscribe = authApi.subscribeToAuthChanges(authUser => {
       setUser(authUser);
+      setEmailVerified(auth.currentUser?.emailVerified ?? false);
       setIsLoading(false);
     });
 
@@ -146,6 +150,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loading: isLoading,
         isLoading,
         isAuthenticated: !!user,
+        emailVerified,
         mfaResolver,
         mfaRequired: !!mfaResolver,
         login,

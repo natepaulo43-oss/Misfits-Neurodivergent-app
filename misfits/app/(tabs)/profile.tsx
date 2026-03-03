@@ -1,9 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert, Platform, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { Avatar, Button, Screen } from '../../components';
 import { colors, spacing, typography } from '../../constants/theme';
+import { deleteUserAccount } from '../../services/authService';
 
 const InfoRow: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => (
   <View style={styles.field}>
@@ -17,6 +18,7 @@ const getRoleLabel = (role?: string | null) =>
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const [isDeleting, setIsDeleting] = useState(false);
   const role = user?.role;
   const onboardingCompleted = Boolean(user?.onboardingCompleted);
   const statusLabel = onboardingCompleted ? 'Active' : 'Incomplete information';
@@ -53,6 +55,71 @@ export default function ProfileScreen() {
       return;
     }
     router.push('/(auth)/role-selection');
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This action is permanent and cannot be undone. All your data will be permanently deleted. Please enter your password to confirm.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => promptForPassword(),
+        },
+      ]
+    );
+  };
+
+  const promptForPassword = () => {
+    if (Platform.OS === 'web') {
+      const password = typeof window !== 'undefined' ? window.prompt('Enter your password to confirm account deletion:') : null;
+      if (password) {
+        performDeleteAccount(password);
+      }
+      return;
+    }
+
+    Alert.prompt(
+      'Confirm Password',
+      'Enter your password to delete your account:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: (password?: string) => {
+            if (password) {
+              performDeleteAccount(password);
+            }
+          },
+        },
+      ],
+      'secure-text'
+    );
+  };
+
+  const performDeleteAccount = async (password: string) => {
+    setIsDeleting(true);
+    try {
+      await deleteUserAccount(password);
+      Alert.alert(
+        'Account Deleted',
+        'Your account has been permanently deleted.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.replace('/(auth)/login'),
+          },
+        ]
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete account. Please try again.';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -118,6 +185,14 @@ export default function ProfileScreen() {
           variant="outline"
           onPress={handleLogout}
           style={styles.logoutButton}
+        />
+
+        <Button
+          title={isDeleting ? "Deleting..." : "Delete Account"}
+          variant="outline"
+          onPress={handleDeleteAccount}
+          disabled={isDeleting}
+          style={styles.deleteButton}
         />
       </ScrollView>
     </Screen>
@@ -216,5 +291,9 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     marginTop: spacing.md,
+  },
+  deleteButton: {
+    marginTop: spacing.sm,
+    borderColor: colors.error,
   },
 });

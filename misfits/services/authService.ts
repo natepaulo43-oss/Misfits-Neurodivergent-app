@@ -8,25 +8,31 @@ import {
   signInWithRedirect,
   getRedirectResult,
   signOut,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  deleteUser,
 } from 'firebase/auth';
 import { Platform } from 'react-native';
+import { doc, deleteDoc } from 'firebase/firestore';
 
-import { auth } from './firebase';
+import { auth, db } from './firebase';
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 const firebaseErrorMessages: Record<string, string> = {
-  'auth/email-already-in-use': 'An account with this email already exists.',
+  'auth/email-already-in-use': 'Invalid email or password. Please try again.',
   'auth/invalid-email': 'Please enter a valid email address.',
-  'auth/invalid-password': 'The password provided is invalid.',
-  'auth/wrong-password': 'Incorrect password. Please try again.',
-  'auth/user-not-found': 'No account found with that email.',
-  'auth/user-disabled': 'This account has been disabled.',
+  'auth/invalid-password': 'Invalid email or password. Please try again.',
+  'auth/wrong-password': 'Invalid email or password. Please try again.',
+  'auth/user-not-found': 'Invalid email or password. Please try again.',
+  'auth/user-disabled': 'This account has been disabled. Please contact support.',
   'auth/popup-closed-by-user': 'Google sign-in was canceled.',
   'auth/operation-not-supported-in-this-environment': 'Google sign-in is not available in Expo Go. Use email/password authentication or build a development build.',
   'auth/app-check-token-invalid': 'App Check is enforced but Expo Go cannot provide valid tokens. Disable App Check enforcement in Firebase Console (set to Monitor mode) for development.',
   'auth/firebase-app-check-token-is-invalid': 'App Check is enforced but Expo Go cannot provide valid tokens. Disable App Check enforcement in Firebase Console (set to Monitor mode) for development.',
+  'auth/requires-recent-login': 'For security reasons, please log in again before deleting your account.',
+  'auth/invalid-credential': 'Invalid password. Please try again.',
 };
 
 const normalizeFirebaseError = (error: unknown): Error => {
@@ -100,6 +106,42 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
 export const logout = async (): Promise<void> => {
   try {
     await signOut(auth);
+  } catch (error) {
+    throw normalizeFirebaseError(error);
+  }
+};
+
+/**
+ * Deletes the user's account permanently.
+ * This function:
+ * 1. Re-authenticates the user (Firebase requires recent login)
+ * 2. Deletes the user's Firestore document
+ * 3. Deletes the user from Firebase Authentication
+ * 
+ * @param password - The user's current password for re-authentication
+ * @throws Error if re-authentication fails or deletion fails
+ */
+export const deleteUserAccount = async (password: string): Promise<void> => {
+  try {
+    const user = auth.currentUser;
+    
+    if (!user || !user.email) {
+      throw new Error('No authenticated user found.');
+    }
+
+    // Step 1: Re-authenticate the user
+    // Firebase requires a recent login before sensitive operations like account deletion
+    const credential = EmailAuthProvider.credential(user.email, password);
+    await reauthenticateWithCredential(user, credential);
+
+    // Step 2: Delete user's Firestore document
+    // This removes all user data from the database
+    const userDocRef = doc(db, 'users', user.uid);
+    await deleteDoc(userDocRef);
+
+    // Step 3: Delete the user from Firebase Authentication
+    // This permanently removes the user's account
+    await deleteUser(user);
   } catch (error) {
     throw normalizeFirebaseError(error);
   }

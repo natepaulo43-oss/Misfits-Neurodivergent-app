@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { Change, EventContext } from 'firebase-functions';
 import { QueryDocumentSnapshot } from 'firebase-functions/v1/firestore';
+import { verifySessionAccess, logAuthError, AuthorizationError } from './middleware/auth';
 
 const db = admin.firestore();
 
@@ -12,11 +13,13 @@ export const onSessionCreated = functions.firestore
     const sessionId = context.params.sessionId;
 
     try {
+      verifySessionAccess(session, ['studentId', 'mentorId']);
+
       const mentorDoc = await db.collection('users').doc(session.mentorId).get();
       const studentDoc = await db.collection('users').doc(session.studentId).get();
 
       if (!mentorDoc.exists || !studentDoc.exists) {
-        console.error('User documents not found');
+        console.warn(`[onSessionCreated] User documents not found for session ${sessionId}`);
         return;
       }
 
@@ -29,7 +32,11 @@ export const onSessionCreated = functions.firestore
       
       return null;
     } catch (error) {
-      console.error('Error in onSessionCreated:', error);
+      if (error instanceof AuthorizationError) {
+        logAuthError(error, 'onSessionCreated');
+        return;
+      }
+      console.error('[onSessionCreated] Unexpected error:', error instanceof Error ? error.message : 'Unknown error');
       return null;
     }
   });
@@ -46,11 +53,13 @@ export const onSessionStatusChanged = functions.firestore
     }
 
     try {
+      verifySessionAccess(after, ['studentId', 'mentorId']);
+
       const mentorDoc = await db.collection('users').doc(after.mentorId).get();
       const studentDoc = await db.collection('users').doc(after.studentId).get();
 
       if (!mentorDoc.exists || !studentDoc.exists) {
-        console.error('User documents not found');
+        console.warn(`[onSessionStatusChanged] User documents not found for session ${sessionId}`);
         return;
       }
 
@@ -99,7 +108,11 @@ export const onSessionStatusChanged = functions.firestore
 
       return null;
     } catch (error) {
-      console.error('Error in onSessionStatusChanged:', error);
+      if (error instanceof AuthorizationError) {
+        logAuthError(error, 'onSessionStatusChanged');
+        return;
+      }
+      console.error('[onSessionStatusChanged] Unexpected error:', error instanceof Error ? error.message : 'Unknown error');
       return null;
     }
   });
@@ -152,7 +165,7 @@ export const scheduleSessionReminders = functions.pubsub
 
       return null;
     } catch (error) {
-      console.error('Error in scheduleSessionReminders:', error);
+      console.error('[scheduleSessionReminders] Unexpected error:', error instanceof Error ? error.message : 'Unknown error');
       return null;
     }
   });
