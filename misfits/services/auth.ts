@@ -1,15 +1,25 @@
-import {
-  User as FirebaseUser,
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
+import { 
+  User as FirebaseUser, 
+  onAuthStateChanged, 
   updateProfile,
+  MultiFactorResolver,
+  PhoneAuthProvider,
+  PhoneMultiFactorGenerator,
+  RecaptchaVerifier,
+  getMultiFactorResolver,
+  deleteUser,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 import { auth, db } from './firebase';
 import { MentorApplicationStatus, User, UserRole } from '../types';
+import {
+  loginWithEmail as loginWithEmailService,
+  loginWithGoogle as loginWithGoogleService,
+  logout as logoutService,
+  registerWithEmail as registerWithEmailService,
+  sendPasswordReset as sendPasswordResetService,
+} from './authService';
 
 let currentUser: User | null = null;
 
@@ -134,13 +144,36 @@ export const subscribeToAuthChanges = (
 };
 
 export const login = async (data: LoginData): Promise<User> => {
-  const credential = await signInWithEmailAndPassword(auth, data.email, data.password);
-  currentUser = await fetchUserProfile(credential.user);
-  return currentUser;
+  try {
+    const credential = await loginWithEmailService(data.email, data.password);
+    currentUser = await fetchUserProfile(credential.user);
+    return currentUser;
+  } catch (error: any) {
+    if (error?.code === 'auth/multi-factor-auth-required') {
+      const resolver = getMultiFactorResolver(auth, error);
+      throw { code: 'auth/multi-factor-auth-required', resolver };
+    }
+    throw error;
+  }
+};
+
+export const loginWithGoogleAccount = async (): Promise<User> => {
+  try {
+    const credential = await loginWithGoogleService();
+    currentUser = await fetchUserProfile(credential.user);
+    return currentUser;
+  } catch (error: any) {
+    if (error?.code === 'auth/multi-factor-auth-required') {
+      const resolver = getMultiFactorResolver(auth, error);
+      throw { code: 'auth/multi-factor-auth-required', resolver };
+    }
+    throw error;
+  }
 };
 
 export const signUp = async (data: SignUpData): Promise<User> => {
-  const credential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+  const credential = await registerWithEmailService(data.email, data.password);
+
   if (data.name) {
     try {
       await updateProfile(credential.user, { displayName: data.name });
@@ -157,18 +190,74 @@ export const signUp = async (data: SignUpData): Promise<User> => {
     pendingRole: null,
     mentorApplicationStatus: 'not_requested',
   };
-  await setDoc(userDocRef(credential.user.uid), newUserData, { merge: true });
+
+  try {
+    await setDoc(userDocRef(credential.user.uid), newUserData, { merge: true });
+  } catch (error) {
+    try {
+      await deleteUser(credential.user);
+    } catch (cleanupError) {
+      console.error('Failed to delete orphaned auth user after signup error', cleanupError);
+    }
+    throw error;
+  }
 
   currentUser = buildUserFromData(credential.user.uid, newUserData, credential.user);
   return currentUser;
 };
 
 export const logout = async (): Promise<void> => {
-  await firebaseSignOut(auth);
+  await logoutService();
   currentUser = null;
 };
 
+export const sendPasswordReset = async (email: string): Promise<void> => {
+  await sendPasswordResetService(email);
+};
+
 export const getCurrentUser = (): User | null => currentUser;
+
+let recaptchaVerifier: RecaptchaVerifier | null = null;
+
+export const getOrCreateRecaptchaVerifier = (): RecaptchaVerifier => {
+  if (!recaptchaVerifier) {
+    recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+    });
+  }
+  return recaptchaVerifier;
+};
+
+export const sendMfaSmsCode = async (
+  resolver: MultiFactorResolver
+): Promise<string> => {
+  const phoneInfoOptions = {
+    multiFactorHint: resolver.hints[0],
+    session: resolver.session,
+  };
+
+  const phoneAuthProvider = new PhoneAuthProvider(auth);
+  const verifier = getOrCreateRecaptchaVerifier();
+  
+  const verificationId = await phoneAuthProvider.verifyPhoneNumber(
+    phoneInfoOptions,
+    verifier
+  );
+  
+  return verificationId;
+};
+
+export const completeMfaSignIn = async (
+  resolver: MultiFactorResolver,
+  verificationId: string,
+  code: string
+): Promise<void> => {
+  const credential = PhoneAuthProvider.credential(verificationId, code);
+  const assertion = PhoneMultiFactorGenerator.assertion(credential);
+  
+  const userCredential = await resolver.resolveSignIn(assertion);
+  currentUser = await fetchUserProfile(userCredential.user);
+};
 
 export const updateUserRole = async (userId: string, role: UserRole): Promise<void> => {
   const updates: FirestoreUserData = {
