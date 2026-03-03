@@ -39,7 +39,7 @@ export const Input: React.FC<InputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.md,
+    width: '100%',
   },
   label: {
     ...typography.bodySmall,

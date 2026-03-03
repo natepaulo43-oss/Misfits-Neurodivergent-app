@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -7,7 +7,6 @@ import {
   Platform,
   TouchableOpacity,
 } from 'react-native';
-import { FirebaseError } from 'firebase/app';
 import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Input, Screen, Card } from '../../components';
@@ -17,37 +16,18 @@ export default function SignupScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
-
-  const getSignupErrorMessage = (error: unknown): string => {
-    if (error && typeof error === 'object' && 'code' in error) {
-      const firebaseError = error as FirebaseError;
-
-      switch (firebaseError.code) {
-        case 'auth/email-already-in-use':
-          return 'This email is already associated with an account.';
-        case 'auth/invalid-email':
-          return 'Please enter a valid email address.';
-        case 'auth/weak-password':
-          return 'Password is too weak. Try adding numbers or symbols.';
-        case 'auth/operation-not-allowed':
-          return 'Email/password sign up is disabled. Please contact support.';
-        case 'auth/network-request-failed':
-          return 'Network error. Please check your connection and try again.';
-        default:
-          if (firebaseError.message) {
-            return firebaseError.message;
-          }
-      }
-    }
-
-    return 'Failed to create account';
-  };
+  const pendingRequestRef = useRef(false);
 
   const handleSignup = async () => {
-    if (!name || !email || !password) {
+    if (pendingRequestRef.current) {
+      return;
+    }
+
+    if (!name || !email || !password || !confirmPassword) {
       setError('Please fill in all fields');
       return;
     }
@@ -57,17 +37,28 @@ export default function SignupScreen() {
       return;
     }
 
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     setError('');
     setLoading(true);
+    pendingRequestRef.current = true;
 
     try {
       await signUp(name, email, password);
       router.replace('/(auth)/role-selection');
     } catch (err) {
       console.error('Signup failed', err);
-      setError(getSignupErrorMessage(err));
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to create account');
+      }
     } finally {
       setLoading(false);
+      pendingRequestRef.current = false;
     }
   };
 
@@ -108,6 +99,14 @@ export default function SignupScreen() {
               placeholder="Create a password"
               value={password}
               onChangeText={setPassword}
+              secureTextEntry
+            />
+
+            <Input
+              label="Confirm Password"
+              placeholder="Re-enter your password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
               secureTextEntry
             />
 
