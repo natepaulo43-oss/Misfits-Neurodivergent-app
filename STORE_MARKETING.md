@@ -56,9 +56,9 @@ We know rigid schedules don't work for everyone. Our intelligent scheduling syst
 • Entrepreneurs building businesses while managing neurodivergent traits
 • Anyone seeking a community that celebrates cognitive diversity
 
-**THE 9THFORM DIFFERENCE**
+**THE DIFFERENCE**
 
-Misfits is proudly part of the 9thform ecosystem – a movement dedicated to reimagining education and professional development for neurodivergent individuals. We believe that different doesn't mean deficient. Your unique way of thinking isn't a bug; it's a feature.
+A movement dedicated to reimagining education and professional development for neurodivergent individuals. We believe that different doesn't mean deficient. Your unique way of thinking isn't a bug; it's a feature.
 
 Our design philosophy centers on clarity, accessibility, and respect for diverse cognitive styles. Every feature is built with input from neurodivergent users, ensuring the app works the way your brain works.
 
@@ -164,7 +164,7 @@ Have feedback? Email us at support@misfits.com
 6. **Profile:** Show user profile customization
 
 **Design Notes:**
-- Use 9thform brand aesthetic (clean, minimal, professional)
+- Use brand aesthetic (clean, minimal, professional)
 - Include brief text overlays explaining key features
 - Show diversity in mentor/user representations
 - Maintain accessibility-focused design language
