@@ -27,6 +27,7 @@ export default function HomeScreen() {
       setAvailability(data);
     } catch (error) {
       console.error('Failed to check availability', error);
+      setAvailability(null);
     } finally {
       setLoadingAvailability(false);
     }

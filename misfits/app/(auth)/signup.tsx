@@ -125,14 +125,14 @@ export default function SignupScreen() {
                 By signing up, you agree to our{' '}
                 <Text
                   style={styles.termsLink}
-                  onPress={() => Linking.openURL('https://misfits.com/terms')}
+                  onPress={() => Linking.openURL('https://erictacl.com/policies/terms-of-service')}
                 >
                   Terms of Service
                 </Text>
                 {' '}and{' '}
                 <Text
                   style={styles.termsLink}
-                  onPress={() => Linking.openURL('https://misfits.com/privacy')}
+                  onPress={() => Linking.openURL('https://erictacl.com/policies/privacy-policy')}
                 >
                   Privacy Policy
                 </Text>

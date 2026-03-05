@@ -58,7 +58,6 @@ export const checkMentorAvailabilityNext7Days = async (
     
     return false;
   } catch (error) {
-    console.error(`[availabilityCheck] Failed to check availability for mentor ${mentorId}`, error);
     return false;
   }
 };

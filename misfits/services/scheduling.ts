@@ -47,7 +47,6 @@ export const getMentorAvailability = async (mentorId: string): Promise<MentorAva
       id: snapshot.id,
     } as MentorAvailability;
   } catch (error) {
-    console.error('[scheduling] Failed to fetch mentor availability', error);
     throw error instanceof Error ? error : new Error('Unable to load availability');
   }
 };
@@ -57,10 +56,6 @@ export const saveMentorAvailability = async (
   availability: Omit<MentorAvailability, 'id' | 'mentorId' | 'updatedAt'>,
 ): Promise<MentorAvailability> => {
   const currentUser = getCurrentUser();
-  console.log('[scheduling] Current user:', currentUser);
-  console.log('[scheduling] Mentor ID:', mentorId);
-  console.log('[scheduling] User role:', currentUser?.role);
-  console.log('[scheduling] Account suspended:', currentUser?.accountSuspended);
   
   if (!currentUser || currentUser.id !== mentorId) {
     throw new Error('Unauthorized');
@@ -91,7 +86,6 @@ export const saveMentorAvailability = async (
       ...availabilityData,
     };
   } catch (error) {
-    console.error('[scheduling] Failed to save availability', error);
     throw error instanceof Error ? error : new Error('Unable to save availability');
   }
 };
@@ -126,7 +120,6 @@ export const getAvailableSlots = async (
     
     return generateTimeSlots(availability, selectedDate, durationMinutes, relevantSessions);
   } catch (error) {
-    console.error('[scheduling] Failed to get available slots', error);
     throw error instanceof Error ? error : new Error('Unable to load available slots');
   }
 };
@@ -203,14 +196,12 @@ export const createSessionRequest = async (
         chatId: thread.id,
       };
     } catch (threadError) {
-      console.warn('[scheduling] Failed to create thread, continuing without chatId', threadError);
       return {
         id: sessionRef.id,
         ...sessionData,
       };
     }
   } catch (error) {
-    console.error('[scheduling] Failed to create session request', error);
     throw error instanceof Error ? error : new Error('Unable to create session request');
   }
 };
@@ -229,7 +220,6 @@ export const getSessionById = async (sessionId: string): Promise<Session | null>
       id: snapshot.id,
     } as Session;
   } catch (error) {
-    console.error('[scheduling] Failed to fetch session', error);
     throw error instanceof Error ? error : new Error('Unable to load session');
   }
 };
@@ -252,7 +242,6 @@ export const getSessionsForUser = async (
       id: docSnap.id,
     } as Session));
   } catch (error) {
-    console.error('[scheduling] Failed to fetch sessions', error);
     throw error instanceof Error ? error : new Error('Unable to load sessions');
   }
 };
@@ -293,7 +282,6 @@ export const acceptSessionRequest = async (sessionId: string): Promise<Session> 
       ...updates,
     } as Session;
   } catch (error) {
-    console.error('[scheduling] Failed to accept session', error);
     throw error instanceof Error ? error : new Error('Unable to accept session');
   }
 };
@@ -336,7 +324,6 @@ export const declineSessionRequest = async (
       ...updates,
     } as Session;
   } catch (error) {
-    console.error('[scheduling] Failed to decline session', error);
     throw error instanceof Error ? error : new Error('Unable to decline session');
   }
 };
@@ -383,7 +370,6 @@ export const proposeReschedule = async (
       ...updates,
     } as Session;
   } catch (error) {
-    console.error('[scheduling] Failed to propose reschedule', error);
     throw error instanceof Error ? error : new Error('Unable to propose reschedule');
   }
 };
@@ -436,7 +422,6 @@ export const acceptRescheduleOption = async (
       ...updates,
     } as Session;
   } catch (error) {
-    console.error('[scheduling] Failed to accept reschedule', error);
     throw error instanceof Error ? error : new Error('Unable to accept reschedule');
   }
 };
@@ -475,7 +460,6 @@ export const cancelSession = async (sessionId: string): Promise<Session> => {
       ...updates,
     } as Session;
   } catch (error) {
-    console.error('[scheduling] Failed to cancel session', error);
     throw error instanceof Error ? error : new Error('Unable to cancel session');
   }
 };
@@ -514,7 +498,6 @@ export const markSessionComplete = async (sessionId: string): Promise<Session> =
       ...updates,
     } as Session;
   } catch (error) {
-    console.error('[scheduling] Failed to mark session complete', error);
     throw error instanceof Error ? error : new Error('Unable to mark session complete');
   }
 };
@@ -559,7 +542,6 @@ export const saveSessionNote = async (
       ...noteData,
     };
   } catch (error) {
-    console.error('[scheduling] Failed to save session note', error);
     throw error instanceof Error ? error : new Error('Unable to save session note');
   }
 };
@@ -592,7 +574,6 @@ export const getSessionNotes = async (sessionId: string): Promise<SessionNote[]>
       id: docSnap.id,
     } as SessionNote));
   } catch (error) {
-    console.error('[scheduling] Failed to fetch session notes', error);
     throw error instanceof Error ? error : new Error('Unable to load session notes');
   }
 };

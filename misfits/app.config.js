@@ -15,7 +15,7 @@ module.exports = {
       "**/*"
     ],
     ios: {
-      supportsTablet: true,
+      supportsTablet: false,
       bundleIdentifier: "com.misfits.app",
       buildNumber: "1",
       infoPlist: {
@@ -68,6 +68,9 @@ module.exports = {
       "expo-font"
     ],
     extra: {
+      eas: {
+        projectId: "99733b36-7c92-4484-adcc-e3f58a7bf254"
+      },
       firebase: {
         apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
         authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
