@@ -18,6 +18,68 @@ import {
   CuratedContentStatus,
 } from '../types';
 import { getMockCuratedContent, getMockPublishedCuratedContent } from '../data/mockCuratedContent';
+import {
+  MAX_LENGTHS,
+  sanitizeId,
+  sanitizeMultiline,
+  sanitizeOptional,
+  sanitizeTagList,
+  sanitizeText,
+  sanitizeUrl,
+} from '../utils/sanitize';
+
+const sanitizeCuratedPayload = <T extends Partial<CuratedContentPayload>>(payload: T): T => {
+  const result: any = { ...payload };
+  if (typeof payload.title === 'string') {
+    result.title = sanitizeText(payload.title, MAX_LENGTHS.shortLine);
+  }
+  if (typeof payload.summary === 'string') {
+    result.summary = sanitizeMultiline(payload.summary, MAX_LENGTHS.bio);
+  }
+  if (typeof payload.body === 'string') {
+    result.body = sanitizeMultiline(payload.body, MAX_LENGTHS.body);
+  }
+  if (typeof payload.authorName !== 'undefined') {
+    result.authorName = sanitizeOptional(payload.authorName, MAX_LENGTHS.name);
+  }
+  if (typeof payload.mentorRecommendationNote !== 'undefined') {
+    result.mentorRecommendationNote = sanitizeOptional(
+      payload.mentorRecommendationNote,
+      MAX_LENGTHS.bio,
+      true,
+    );
+  }
+  if (typeof payload.mediaUrl !== 'undefined') {
+    result.mediaUrl = payload.mediaUrl ? sanitizeUrl(payload.mediaUrl) || undefined : undefined;
+  }
+  if (typeof payload.thumbnailUrl !== 'undefined') {
+    result.thumbnailUrl = payload.thumbnailUrl
+      ? sanitizeUrl(payload.thumbnailUrl) || undefined
+      : undefined;
+  }
+  if (typeof payload.marketplaceRecommendationUrl !== 'undefined') {
+    result.marketplaceRecommendationUrl = payload.marketplaceRecommendationUrl
+      ? sanitizeUrl(payload.marketplaceRecommendationUrl) || undefined
+      : undefined;
+  }
+  if (Array.isArray(payload.tags)) {
+    result.tags = sanitizeTagList(payload.tags, 40, MAX_LENGTHS.tag);
+  }
+  if (Array.isArray(payload.relatedMentorIds)) {
+    const ids: string[] = [];
+    for (const raw of payload.relatedMentorIds) {
+      const id = sanitizeId(raw);
+      if (id) ids.push(id);
+      if (ids.length >= 50) break;
+    }
+    result.relatedMentorIds = ids;
+  }
+  if (Array.isArray(payload.categories)) {
+    // Categories are a fixed enum; still enforce tag-list safety on strings.
+    result.categories = sanitizeTagList(payload.categories, 20, MAX_LENGTHS.shortLine);
+  }
+  return result as T;
+};
 
 const curatedContentCollection = collection(db, 'curatedContent');
 
@@ -89,9 +151,10 @@ export const fetchAllCuratedContent = async (): Promise<CuratedContent[]> => {
 
 export const createCuratedContent = async (payload: CuratedContentPayload): Promise<string> => {
   const timestamp = new Date().toISOString();
+  const safePayload = sanitizeCuratedPayload(payload);
   const docRef = await addDoc(curatedContentCollection, {
-    ...payload,
-    publishedAt: payload.status === 'published' ? payload.publishedAt ?? timestamp : null,
+    ...safePayload,
+    publishedAt: safePayload.status === 'published' ? safePayload.publishedAt ?? timestamp : null,
     createdAt: timestamp,
     updatedAt: timestamp,
   });
@@ -104,8 +167,9 @@ export const updateCuratedContent = async (
 ): Promise<void> => {
   const docRef = doc(curatedContentCollection, id);
   const timestamp = new Date().toISOString();
+  const safeUpdates = sanitizeCuratedPayload(updates);
   await updateDoc(docRef, {
-    ...updates,
+    ...safeUpdates,
     updatedAt: timestamp,
     ...(updates.status === 'published' ? { publishedAt: updates.publishedAt ?? timestamp } : {}),
     ...(updates.status && updates.status !== 'published' ? { publishedAt: null } : {}),

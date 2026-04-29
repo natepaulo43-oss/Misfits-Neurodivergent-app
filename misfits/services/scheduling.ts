@@ -27,6 +27,7 @@ import {
   TimeSlot,
 } from '../types';
 import { generateTimeSlots, getDeviceTimezone, getDateString } from '../utils/scheduling';
+import { MAX_LENGTHS, sanitizeMultiline, sanitizeOptional } from '../utils/sanitize';
 
 const availabilityCollection = collection(db, 'mentorAvailability') as CollectionReference<MentorAvailability>;
 const sessionsCollection = collection(db, 'sessions') as CollectionReference<Session>;
@@ -161,7 +162,7 @@ export const createSessionRequest = async (
     studentTimezone,
     mentorTimezone: mentorAvailability.timezone,
     connectionPreference,
-    studentNotes,
+    studentNotes: sanitizeOptional(studentNotes, MAX_LENGTHS.bio, true),
     createdAt: now,
     updatedAt: now,
     reminderState: {
@@ -228,6 +229,14 @@ export const getSessionsForUser = async (
   userId: string,
   role: 'student' | 'mentor',
 ): Promise<Session[]> => {
+  const currentUser = getCurrentUser();
+  if (!currentUser) {
+    throw new Error('You must be signed in');
+  }
+  if (currentUser.id !== userId && currentUser.role !== 'admin') {
+    throw new Error('Unauthorized');
+  }
+
   try {
     const field = role === 'student' ? 'studentId' : 'mentorId';
     const sessionsQuery = query(
@@ -311,7 +320,7 @@ export const declineSessionRequest = async (
   const now = new Date().toISOString();
   const updates: Partial<Session> = {
     status: 'declined',
-    mentorResponseReason: reason,
+    mentorResponseReason: sanitizeOptional(reason, MAX_LENGTHS.notes, true),
     updatedAt: now,
   };
   
@@ -525,12 +534,16 @@ export const saveSessionNote = async (
     throw new Error('Unauthorized');
   }
   
+  const safeNote = sanitizeMultiline(note, MAX_LENGTHS.notes);
+  if (!safeNote) {
+    throw new Error('Note cannot be empty');
+  }
   const now = new Date().toISOString();
   const noteData: Omit<SessionNote, 'id'> = {
     sessionId,
     mentorId: currentUser.id,
-    note,
-    followUps,
+    note: safeNote,
+    followUps: sanitizeOptional(followUps, MAX_LENGTHS.notes, true),
     createdAt: now,
   };
   

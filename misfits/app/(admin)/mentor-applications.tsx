@@ -83,6 +83,7 @@ export default function MentorApplicationsScreen() {
           onChangeText={text => setAdminNotes(prev => ({ ...prev, [user.id]: text }))}
           multiline
           numberOfLines={3}
+          maxLength={2000}
         />
 
         <View style={styles.actions}>

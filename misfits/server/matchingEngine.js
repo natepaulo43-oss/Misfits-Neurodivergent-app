@@ -230,8 +230,16 @@ const matchMentors = (studentProfile, mentorProfiles, options = {}) => {
   const minResults = Math.max(options.minResults || MIN_RESULTS, 1);
   const maxResults = Math.min(options.maxResults || MAX_RESULTS, 10);
 
+  const dismissedSet = new Set(getArray(studentProfile.dismissedMentorIds));
+  const studentId = studentProfile.id ?? null;
+
   const scoredMentors = mentorProfiles
-    .filter(mentor => passesHardFilters(studentProfile, mentor))
+    .filter(mentor => {
+      const mentorId = mentor.id ?? mentor.mentor_id ?? null;
+      if (mentorId !== null && dismissedSet.has(mentorId)) return false;
+      if (studentId !== null && getArray(mentor.blockedStudentIds).includes(studentId)) return false;
+      return passesHardFilters(studentProfile, mentor);
+    })
     .map(mentor => {
       const breakdown = computeComponentBreakdown(studentProfile, mentor);
       const baseScore = sumWeightedScore(weights, breakdown);

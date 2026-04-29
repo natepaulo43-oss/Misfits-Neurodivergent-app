@@ -1,63 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
-  ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './Button';
+import { BackupCodeRecovery } from './BackupCodeRecovery';
 import { colors, spacing, typography, borderRadius } from '../constants/theme';
-import * as authApi from '../services/auth';
 
 interface MFAChallengeProps {
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
+const MAX_ATTEMPTS = 5;
+
 export const MFAChallenge: React.FC<MFAChallengeProps> = ({ onSuccess, onCancel }) => {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sendingCode, setSendingCode] = useState(false);
-  const [verificationId, setVerificationId] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState(0);
+  const [showRecovery, setShowRecovery] = useState(false);
   const { mfaResolver, verifyMfaCode, clearMfaResolver } = useAuth();
 
-  useEffect(() => {
-    if (mfaResolver && !verificationId) {
-      sendSmsCode();
-    }
-  }, [mfaResolver]);
-
-  const sendSmsCode = async () => {
-    if (!mfaResolver) return;
-
-    setSendingCode(true);
-    setError('');
-
-    try {
-      const vid = await authApi.sendMfaSmsCode(mfaResolver);
-      setVerificationId(vid);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Failed to send verification code. Please try again.');
-      }
-    } finally {
-      setSendingCode(false);
-    }
-  };
-
   const handleVerifyCode = async () => {
-    if (!code || code.length !== 6) {
-      setError('Please enter a valid 6-digit code');
+    if (attempts >= MAX_ATTEMPTS) {
+      setError('Too many failed attempts. Please cancel and try signing in again.');
       return;
     }
 
-    if (!verificationId) {
-      setError('No verification ID available. Please try again.');
+    if (!code || code.length !== 6) {
+      setError('Please enter a valid 6-digit code');
       return;
     }
 
@@ -65,13 +41,19 @@ export const MFAChallenge: React.FC<MFAChallengeProps> = ({ onSuccess, onCancel 
     setLoading(true);
 
     try {
-      await verifyMfaCode(verificationId, code);
+      await verifyMfaCode(code);
       onSuccess?.();
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
+      const nextAttempts = attempts + 1;
+      setAttempts(nextAttempts);
+      if (nextAttempts >= MAX_ATTEMPTS) {
+        setError('Too many failed attempts. Please cancel and try signing in again.');
+        clearMfaResolver();
+        onCancel?.();
+      } else if (err instanceof Error) {
+        setError(`${err.message} (${MAX_ATTEMPTS - nextAttempts} attempt${MAX_ATTEMPTS - nextAttempts === 1 ? '' : 's'} remaining)`);
       } else {
-        setError('Invalid verification code. Please try again.');
+        setError(`Invalid code. Please try again. (${MAX_ATTEMPTS - nextAttempts} attempts remaining)`);
       }
     } finally {
       setLoading(false);
@@ -87,60 +69,65 @@ export const MFAChallenge: React.FC<MFAChallengeProps> = ({ onSuccess, onCancel 
     return null;
   }
 
-  const phoneHint = mfaResolver.hints[0]?.displayName || 'your phone';
+  if (showRecovery) {
+    return (
+      <BackupCodeRecovery
+        onSuccess={onSuccess}
+        onCancel={() => setShowRecovery(false)}
+      />
+    );
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Two-Factor Authentication</Text>
         <Text style={styles.subtitle}>
-          {sendingCode
-            ? 'Sending verification code...'
-            : `Enter the 6-digit code sent to ${phoneHint}`}
+          Open your authenticator app and enter the 6-digit code.
         </Text>
       </View>
 
-      {sendingCode ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : (
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={code}
-              onChangeText={(text) => setCode(text.replace(/[^0-9]/g, ''))}
-              keyboardType="number-pad"
-              maxLength={6}
-              placeholder="000000"
-              placeholderTextColor={colors.textSecondary}
-              autoFocus
-              editable={!loading}
-            />
-          </View>
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <Button
-            title="Verify Code"
-            onPress={handleVerifyCode}
-            loading={loading}
-            disabled={code.length !== 6}
-            style={styles.button}
-          />
-
-          <Button
-            title="Cancel"
-            onPress={handleCancel}
-            variant="outline"
-            disabled={loading}
-            style={styles.cancelButton}
+      <View style={styles.form}>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            value={code}
+            onChangeText={(text) => setCode(text.replace(/[^0-9]/g, ''))}
+            keyboardType="number-pad"
+            maxLength={6}
+            placeholder="000000"
+            placeholderTextColor={colors.textSecondary}
+            autoFocus
+            editable={!loading}
           />
         </View>
-      )}
 
-      <View id="recaptcha-container" style={styles.recaptchaContainer} />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        <Button
+          title="Verify Code"
+          onPress={handleVerifyCode}
+          loading={loading}
+          disabled={code.length !== 6}
+          style={styles.button}
+        />
+
+        <Button
+          title="Cancel"
+          onPress={handleCancel}
+          variant="outline"
+          disabled={loading}
+          style={styles.cancelButton}
+        />
+
+        <TouchableOpacity
+          onPress={() => setShowRecovery(true)}
+          style={styles.recoveryLink}
+          disabled={loading}
+        >
+          <Text style={styles.recoveryLinkText}>Can't access your app? Use a backup code</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -163,10 +150,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
-  },
-  loadingContainer: {
-    paddingVertical: spacing.xl,
-    alignItems: 'center',
   },
   form: {
     gap: spacing.md,
@@ -200,9 +183,14 @@ const styles = StyleSheet.create({
   cancelButton: {
     marginTop: spacing.sm,
   },
-  recaptchaContainer: {
-    position: 'absolute',
-    opacity: 0,
-    pointerEvents: 'none',
+  recoveryLink: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  recoveryLinkText: {
+    ...typography.bodySmall,
+    color: colors.primary,
+    textDecorationLine: 'underline',
   },
 });

@@ -25,7 +25,6 @@ export const exampleCallableFunction = functions.https.onCall(
     }
 
     console.log('App Check verified for user:', request.auth.uid);
-    console.log('App Check token:', appCheckToken);
 
     return {
       success: true,

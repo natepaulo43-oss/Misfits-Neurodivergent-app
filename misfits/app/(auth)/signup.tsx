@@ -12,9 +12,11 @@ import * as Linking from 'expo-linking';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Input, Screen, Card } from '../../components';
 import { colors, spacing, typography } from '../../constants/theme';
+import { validateBirthYear } from '../../utils/ageGate';
 
 export default function SignupScreen() {
   const [name, setName] = useState('');
+  const [birthYear, setBirthYear] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -25,6 +27,12 @@ export default function SignupScreen() {
 
   const handleSignup = async () => {
     if (pendingRequestRef.current) {
+      return;
+    }
+
+    const ageCheck = validateBirthYear(birthYear);
+    if (!ageCheck.valid) {
+      setError(ageCheck.error);
       return;
     }
 
@@ -84,6 +92,16 @@ export default function SignupScreen() {
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
+              maxLength={80}
+            />
+
+            <Input
+              label="What year were you born?"
+              placeholder="YYYY"
+              value={birthYear}
+              onChangeText={setBirthYear}
+              keyboardType="numeric"
+              maxLength={4}
             />
 
             <Input
@@ -93,6 +111,7 @@ export default function SignupScreen() {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              maxLength={254}
             />
 
             <Input
@@ -101,6 +120,7 @@ export default function SignupScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+              maxLength={128}
             />
 
             <Input
@@ -109,6 +129,7 @@ export default function SignupScreen() {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
+              maxLength={128}
             />
 
             {error ? <Text style={styles.error}>{error}</Text> : null}

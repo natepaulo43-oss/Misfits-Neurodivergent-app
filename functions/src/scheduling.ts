@@ -1,6 +1,6 @@
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
-import { Change, EventContext } from 'firebase-functions';
+import { Change, EventContext } from 'firebase-functions/v1';
 import { QueryDocumentSnapshot } from 'firebase-functions/v1/firestore';
 import { verifySessionAccess, logAuthError, AuthorizationError } from './middleware/auth';
 
@@ -15,20 +15,7 @@ export const onSessionCreated = functions.firestore
     try {
       verifySessionAccess(session, ['studentId', 'mentorId']);
 
-      const mentorDoc = await db.collection('users').doc(session.mentorId).get();
-      const studentDoc = await db.collection('users').doc(session.studentId).get();
-
-      if (!mentorDoc.exists || !studentDoc.exists) {
-        console.warn(`[onSessionCreated] User documents not found for session ${sessionId}`);
-        return;
-      }
-
-      const mentorData = mentorDoc.data();
-      const studentData = studentDoc.data();
-
-      console.log(
-        `[Notification Stub][Session ${sessionId}] New session request from ${studentData?.name} to ${mentorData?.name}`
-      );
+      console.log(`[Notification Stub][Session ${sessionId}] New session request: student=${session.studentId} mentor=${session.mentorId}`);
       
       return null;
     } catch (error) {
@@ -68,42 +55,35 @@ export const onSessionStatusChanged = functions.firestore
 
       let notificationMessage = '';
       let recipientId = '';
-      let recipientName = '';
 
       switch (after.status) {
         case 'confirmed':
           recipientId = after.studentId;
-          recipientName = studentData?.name || 'Student';
           notificationMessage = `${mentorData?.name} accepted your session request!`;
           break;
         case 'declined':
           recipientId = after.studentId;
-          recipientName = studentData?.name || 'Student';
           notificationMessage = `${mentorData?.name} declined your session request.`;
           break;
         case 'reschedule_proposed':
           recipientId = after.studentId;
-          recipientName = studentData?.name || 'Student';
           notificationMessage = `${mentorData?.name} proposed alternative times for your session.`;
           break;
         case 'cancelled': {
           const cancelledByMentor = before.updatedBy === after.mentorId;
           const cancelledBy = cancelledByMentor ? mentorData?.name || 'Mentor' : studentData?.name || 'Student';
           recipientId = cancelledByMentor ? after.studentId : after.mentorId;
-          recipientName = cancelledByMentor ? studentData?.name || 'Student' : mentorData?.name || 'Mentor';
           notificationMessage = `Session ${sessionId} has been cancelled by ${cancelledBy}.`;
           break;
         }
         case 'completed':
           recipientId = after.studentId;
-          recipientName = studentData?.name || 'Student';
           notificationMessage = `Your session with ${mentorData?.name} has been marked complete.`;
           break;
       }
 
       if (recipientId && notificationMessage) {
-        const nameOrFallback = recipientName || recipientId;
-        console.log(`[Notification Stub][Session ${sessionId}] To ${nameOrFallback}: ${notificationMessage}`);
+        console.log(`[Notification Stub][Session ${sessionId}] status=${after.status} recipient=${recipientId}`);
       }
 
       return null;
@@ -176,8 +156,7 @@ export const sendPushNotification = async (
   body: string,
   data?: Record<string, string>
 ) => {
-  console.log(`[Push Notification Stub] To user ${userId}: ${title} - ${body}`);
-  console.log('[Push Notification Stub] Data:', data);
+  console.log(`[Push Notification Stub] queued for user=${userId} title=${title}`);
   
   return {
     success: true,

@@ -4,7 +4,9 @@ import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { Avatar, Button, Screen } from '../../components';
 import { colors, spacing, typography } from '../../constants/theme';
+import { auth } from '../../services/firebase';
 import { deleteUserAccount } from '../../services/authService';
+import { useGoogleDeleteAccount } from '../../hooks/useGoogleDeleteAccount';
 
 const InfoRow: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => (
   <View style={styles.field}>
@@ -19,6 +21,15 @@ const getRoleLabel = (role?: string | null) =>
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const { initiateGoogleDelete, loading: googleDeleteLoading } = useGoogleDeleteAccount(
+    () => {
+      Alert.alert('Account Deleted', 'Your account has been permanently deleted.', [
+        { text: 'OK', onPress: () => router.replace('/(auth)/login') },
+      ]);
+    },
+    (message) => Alert.alert('Error', message),
+  );
   const role = user?.role;
   const onboardingCompleted = Boolean(user?.onboardingCompleted);
   const statusLabel = onboardingCompleted ? 'Active' : 'Incomplete information';
@@ -58,18 +69,28 @@ export default function ProfileScreen() {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This action is permanent and cannot be undone. All your data will be permanently deleted. Please enter your password to confirm.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Continue',
-          style: 'destructive',
-          onPress: () => promptForPassword(),
+    const hasPasswordProvider = auth.currentUser?.providerData.some(
+      (p) => p.providerId === 'password',
+    ) ?? false;
+
+    const message = hasPasswordProvider
+      ? 'This action is permanent and cannot be undone. All your data will be permanently deleted. Please enter your password to confirm.'
+      : 'This action is permanent and cannot be undone. All your data will be permanently deleted. You will be asked to sign in with Google to confirm.';
+
+    Alert.alert('Delete Account', message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Continue',
+        style: 'destructive',
+        onPress: () => {
+          if (hasPasswordProvider) {
+            promptForPassword();
+          } else {
+            initiateGoogleDelete();
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const promptForPassword = () => {
@@ -188,10 +209,10 @@ export default function ProfileScreen() {
         />
 
         <Button
-          title={isDeleting ? "Deleting..." : "Delete Account"}
+          title={isDeleting || googleDeleteLoading ? "Deleting..." : "Delete Account"}
           variant="outline"
           onPress={handleDeleteAccount}
-          disabled={isDeleting}
+          disabled={isDeleting || googleDeleteLoading}
           style={styles.deleteButton}
         />
       </ScrollView>

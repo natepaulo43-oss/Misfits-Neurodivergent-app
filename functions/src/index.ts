@@ -4,3 +4,7 @@ admin.initializeApp();
 
 export * from './scheduling';
 export * from './appCheckExample';
+export * from './backupCodes';
+export * from './sessionManagement';
+export * from './messaging';
+export * from './userData';

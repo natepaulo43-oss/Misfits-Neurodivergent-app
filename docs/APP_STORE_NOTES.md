@@ -43,16 +43,15 @@ This app uses **Firebase App Check** for enhanced security and abuse prevention.
 
 ### Permissions Requested
 
-- **Notifications (Optional):** For mentor meeting reminders and community updates
-- **Camera/Photo Library (Optional):** For profile photo uploads only
+This version of the app does not request any sensitive device permissions (camera, photo library, microphone, or location are not used).
 
-All permissions are requested with clear, neurodivergent-friendly explanations at the point of use.
+- **Notifications (Optional):** Infrastructure is in place (push token saved to Firestore) but the runtime permission prompt is not yet wired up in this build.
 
 ---
 
 ## Privacy & Data Handling
 
-- **Privacy Policy URL:** [Your hosted privacy.html URL will go here]
+- **Privacy Policy URL:** https://erictacl.com/policies/privacy-policy
 - **Data Collection:** Minimal - only email, display name, and user-provided profile information
 - **Third-Party Services:** Firebase (Google) for authentication and database
 - **Data Deletion:** Users can delete their account and all associated data from Settings

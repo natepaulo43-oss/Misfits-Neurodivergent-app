@@ -1,5 +1,6 @@
 import { Mentor, StudentProfile, MentorMatchResult, MentorMatchMetadata } from '../types';
 import Constants from 'expo-constants';
+import { auth } from './firebase';
 
 const MATCHING_API_URL = Constants.expoConfig?.extra?.matchingApiUrl || process.env.EXPO_PUBLIC_MATCHING_API_URL;
 
@@ -7,6 +8,12 @@ if (!MATCHING_API_URL) {
   console.warn(
     'Missing EXPO_PUBLIC_MATCHING_API_URL environment variable. Matching requests will fail.',
   );
+} else if (!/^https:\/\//i.test(MATCHING_API_URL)) {
+  const msg = 'MATCHING_API_URL must use HTTPS — sending an auth token over HTTP is unsafe.';
+  if (!__DEV__) {
+    throw new Error(msg);
+  }
+  console.warn(`[matching] ${msg}`);
 }
 
 interface MatchResponse {
@@ -49,10 +56,15 @@ export const fetchMentorMatches = async (
 
   const payloadMentors = sanitizeMentorProfiles(mentorProfiles);
 
+  const idToken = auth.currentUser
+    ? await auth.currentUser.getIdToken()
+    : undefined;
+
   const response = await fetch(`${MATCHING_API_URL}/match`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
     },
     body: JSON.stringify({
       student_profile: studentProfile,

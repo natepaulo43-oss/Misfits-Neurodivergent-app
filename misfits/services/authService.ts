@@ -1,21 +1,21 @@
 import { FirebaseError } from 'firebase/app';
 import {
   GoogleAuthProvider,
+  OAuthCredential,
   UserCredential,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
+  signInWithCredential,
+  linkWithCredential,
   signOut,
   EmailAuthProvider,
   reauthenticateWithCredential,
-  deleteUser,
 } from 'firebase/auth';
-import { Platform } from 'react-native';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
-import { auth, db } from './firebase';
+import { auth, app } from './firebase';
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
@@ -28,29 +28,76 @@ const firebaseErrorMessages: Record<string, string> = {
   'auth/user-not-found': 'Invalid email or password. Please try again.',
   'auth/user-disabled': 'This account has been disabled. Please contact support.',
   'auth/popup-closed-by-user': 'Google sign-in was canceled.',
-  'auth/operation-not-supported-in-this-environment': 'Google sign-in is not available in Expo Go. Use email/password authentication or build a development build.',
-  'auth/app-check-token-invalid': 'App Check is enforced but Expo Go cannot provide valid tokens. Disable App Check enforcement in Firebase Console (set to Monitor mode) for development.',
-  'auth/firebase-app-check-token-is-invalid': 'App Check is enforced but Expo Go cannot provide valid tokens. Disable App Check enforcement in Firebase Console (set to Monitor mode) for development.',
-  'auth/requires-recent-login': 'For security reasons, please log in again before deleting your account.',
+  'auth/popup-blocked': 'Your browser blocked the sign-in popup. Please allow popups for this site and try again.',
+  'auth/cancelled-popup-request': 'Google sign-in was canceled.',
+  'auth/account-exists-with-different-credential':
+    'An account already exists with this email address. Sign in with your password to link your Google account.',
+  'auth/operation-not-supported-in-this-environment':
+    'Google sign-in is not available in Expo Go. Use email/password authentication or build a development build.',
+  'auth/app-check-token-invalid':
+    'App Check is enforced but Expo Go cannot provide valid tokens. Disable App Check enforcement in Firebase Console (set to Monitor mode) for development.',
+  'auth/firebase-app-check-token-is-invalid':
+    'App Check is enforced but Expo Go cannot provide valid tokens. Disable App Check enforcement in Firebase Console (set to Monitor mode) for development.',
+  'auth/requires-recent-login':
+    'For security reasons, please log in again before deleting your account.',
   'auth/invalid-credential': 'Invalid password. Please try again.',
 };
 
 const normalizeFirebaseError = (error: unknown): Error => {
   if (error instanceof FirebaseError) {
-    const message = firebaseErrorMessages[error.code] || error.message || 'Unable to complete the request.';
+    const message =
+      firebaseErrorMessages[error.code] || error.message || 'Unable to complete the request.';
     const normalizedError = new Error(message);
     normalizedError.name = error.code;
     return normalizedError;
   }
-
   if (error instanceof Error) {
     return error;
   }
-
   return new Error('Unexpected error occurred.');
 };
 
-export const registerWithEmail = async (email: string, password: string): Promise<UserCredential> => {
+// ─── Pending Google credential (account-linking) ─────────────────────────────
+//
+// When Firebase returns auth/account-exists-with-different-credential, we store
+// the Google credential here. After the user signs in with their password we
+// call linkPendingGoogleCredential() to merge the accounts.
+
+let _pendingLinkEmail: string | null = null;
+let _pendingLinkCredential: OAuthCredential | null = null;
+
+function capturePendingCredential(error: FirebaseError): void {
+  const email = (error.customData?.email ?? '') as string;
+  const cred = GoogleAuthProvider.credentialFromError(error);
+  if (email && cred) {
+    _pendingLinkEmail = email;
+    _pendingLinkCredential = cred;
+  }
+}
+
+export const getPendingLinkEmail = (): string | null => _pendingLinkEmail;
+
+export const clearPendingLinkState = (): void => {
+  _pendingLinkEmail = null;
+  _pendingLinkCredential = null;
+};
+
+/** Called after a successful email/password sign-in to merge a pending Google credential. */
+export const linkPendingGoogleCredential = async (): Promise<void> => {
+  if (!auth.currentUser || !_pendingLinkCredential) return;
+  try {
+    await linkWithCredential(auth.currentUser, _pendingLinkCredential);
+  } finally {
+    clearPendingLinkState();
+  }
+};
+
+// ─── Auth functions ───────────────────────────────────────────────────────────
+
+export const registerWithEmail = async (
+  email: string,
+  password: string,
+): Promise<UserCredential> => {
   try {
     return await createUserWithEmailAndPassword(auth, email, password);
   } catch (error) {
@@ -58,48 +105,57 @@ export const registerWithEmail = async (email: string, password: string): Promis
   }
 };
 
-export const loginWithEmail = async (email: string, password: string): Promise<UserCredential> => {
+export const loginWithEmail = async (
+  email: string,
+  password: string,
+): Promise<UserCredential> => {
   try {
     const result = await signInWithEmailAndPassword(auth, email, password);
-    
-    // Reviewer test account backdoor (for App Store review only)
-    // Apple reviewers cannot access real email inboxes, so we bypass verification
+
     if (__DEV__ && email === 'REDACTED') {
-      // Note: This only affects local state checks, not Firebase security rules
       console.log('[DEV] Reviewer test account detected - bypassing email verification checks');
     }
-    
+
     return result;
   } catch (error) {
     throw normalizeFirebaseError(error);
   }
 };
 
+/**
+ * Web Google sign-in via popup.
+ * signInWithPopup is synchronous (no page navigation) so errors including
+ * auth/account-exists-with-different-credential are handled in the same call stack.
+ */
 export const loginWithGoogle = async (): Promise<UserCredential> => {
   try {
-    // Google Sign-In with popup/redirect is not supported in Expo Go
-    // It requires either:
-    // 1. Running on web (where signInWithRedirect works)
-    // 2. Using a development build with native Google Sign-In
-    // 3. Using expo-auth-session with Google OAuth (requires additional setup)
-    
-    if (Platform.OS !== 'web') {
-      // For now, throw a helpful error in Expo Go
-      // In production builds, you would use expo-auth-session or native Google Sign-In
-      throw new Error('Google sign-in is not available in Expo Go. Please use email/password authentication, or build a development build for native Google Sign-In support.');
-    }
-    
-    // On web, use redirect flow (works better than popup in some browsers)
-    await signInWithRedirect(auth, googleProvider);
-    
-    // After redirect, get the result
-    const result = await getRedirectResult(auth);
-    if (!result) {
-      throw new Error('Google sign-in was canceled or failed.');
-    }
-    
-    return result;
+    return await signInWithPopup(auth, googleProvider);
   } catch (error) {
+    if (
+      error instanceof FirebaseError &&
+      error.code === 'auth/account-exists-with-different-credential'
+    ) {
+      capturePendingCredential(error);
+    }
+    throw normalizeFirebaseError(error);
+  }
+};
+
+/**
+ * Native Google sign-in: takes a Google ID token (from expo-auth-session)
+ * and signs into Firebase. Same account-exists handling as the web path.
+ */
+export const loginWithGoogleIdToken = async (idToken: string): Promise<UserCredential> => {
+  try {
+    const credential = GoogleAuthProvider.credential(idToken);
+    return await signInWithCredential(auth, credential);
+  } catch (error) {
+    if (
+      error instanceof FirebaseError &&
+      error.code === 'auth/account-exists-with-different-credential'
+    ) {
+      capturePendingCredential(error);
+    }
     throw normalizeFirebaseError(error);
   }
 };
@@ -112,7 +168,21 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
   }
 };
 
+const callRevokeUserSession = async (): Promise<void> => {
+  if (!auth.currentUser) return;
+  try {
+    const fns = getFunctions(app);
+    const revoke = httpsCallable(fns, 'revokeUserSession');
+    await revoke();
+  } catch (err) {
+    // Best-effort — a network failure must not prevent the local sign-out,
+    // but log the failure so it is visible in production monitoring.
+    console.warn('[auth] Server-side token revocation failed; local sign-out will still proceed.', err);
+  }
+};
+
 export const logout = async (): Promise<void> => {
+  await callRevokeUserSession();
   try {
     await signOut(auth);
   } catch (error) {
@@ -120,37 +190,75 @@ export const logout = async (): Promise<void> => {
   }
 };
 
+/** Revokes all active sessions across every device, then signs out locally. */
+export const revokeAllSessions = async (): Promise<void> => {
+  const fns = getFunctions(app);
+  const revoke = httpsCallable(fns, 'revokeUserSession');
+  await revoke(); // throws on failure — intentional (caller should surface the error)
+  await signOut(auth);
+};
+
+// ─── Account deletion ─────────────────────────────────────────────────────────
+//
+// Both email/password and Google deletion share the same post-reauth steps:
+// call the deleteUserData Cloud Function, then sign out locally.
+
+const purgeAccountAfterReauth = async (): Promise<void> => {
+  const fns = getFunctions(app);
+  const deleteUserData = httpsCallable(fns, 'deleteUserData');
+  await deleteUserData();
+  try {
+    await signOut(auth);
+  } catch {
+    // Expected to fail if the session token is already invalidated; safe to ignore.
+  }
+};
+
 /**
- * Deletes the user's account permanently.
- * This function:
- * 1. Re-authenticates the user (Firebase requires recent login)
- * 2. Deletes the user's Firestore document
- * 3. Deletes the user from Firebase Authentication
- * 
- * @param password - The user's current password for re-authentication
- * @throws Error if re-authentication fails or deletion fails
+ * Permanently deletes an email/password account.
+ *
+ * Flow:
+ *  1. Re-authenticate with the user's password (required by Firebase for destructive ops).
+ *  2. Call the `deleteUserData` Cloud Function which uses the Admin SDK to purge all data
+ *     and remove the Firebase Auth account.
+ *  3. Sign out locally.
  */
 export const deleteUserAccount = async (password: string): Promise<void> => {
   try {
     const user = auth.currentUser;
-    
-    if (!user || !user.email) {
-      throw new Error('No authenticated user found.');
+    if (!user || !user.email) throw new Error('No authenticated user found.');
+
+    const hasPasswordProvider = user.providerData.some((p) => p.providerId === 'password');
+    if (!hasPasswordProvider) {
+      throw new Error(
+        'Your account uses Google Sign-In. Please use the Google sign-in option to confirm account deletion.',
+      );
     }
 
-    // Step 1: Re-authenticate the user
-    // Firebase requires a recent login before sensitive operations like account deletion
     const credential = EmailAuthProvider.credential(user.email, password);
     await reauthenticateWithCredential(user, credential);
+    await purgeAccountAfterReauth();
+  } catch (error) {
+    throw normalizeFirebaseError(error);
+  }
+};
 
-    // Step 2: Delete user's Firestore document
-    // This removes all user data from the database
-    const userDocRef = doc(db, 'users', user.uid);
-    await deleteDoc(userDocRef);
+/**
+ * Permanently deletes a Google-authenticated account.
+ *
+ * The caller must supply a fresh Google ID token obtained via expo-auth-session
+ * immediately before calling this function. The token is used to re-authenticate
+ * the user before the destructive operation, satisfying both Firebase's
+ * requires-recent-login requirement and Apple App Store guidelines.
+ */
+export const deleteGoogleUserAccount = async (idToken: string): Promise<void> => {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error('No authenticated user found.');
 
-    // Step 3: Delete the user from Firebase Authentication
-    // This permanently removes the user's account
-    await deleteUser(user);
+    const credential = GoogleAuthProvider.credential(idToken);
+    await reauthenticateWithCredential(user, credential);
+    await purgeAccountAfterReauth();
   } catch (error) {
     throw normalizeFirebaseError(error);
   }

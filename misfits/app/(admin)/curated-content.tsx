@@ -537,13 +537,19 @@ export default function CuratedContentAdminScreen() {
           <Button title="New draft" variant="secondary" size="small" onPress={handleResetForm} />
         </View>
       </View>
-      <Input label="Title" value={form.title} onChangeText={text => setForm(prev => ({ ...prev, title: text }))} />
+      <Input
+        label="Title"
+        value={form.title}
+        onChangeText={text => setForm(prev => ({ ...prev, title: text }))}
+        maxLength={120}
+      />
       <Input
         label="Summary"
         value={form.summary}
         onChangeText={text => setForm(prev => ({ ...prev, summary: text }))}
         multiline
         numberOfLines={3}
+        maxLength={1000}
       />
       <Input
         label="Body"
@@ -551,6 +557,7 @@ export default function CuratedContentAdminScreen() {
         onChangeText={text => setForm(prev => ({ ...prev, body: text }))}
         multiline
         numberOfLines={5}
+        maxLength={10000}
       />
       {renderSelectRow('Format', formatOptions, form.format, value =>
         setForm(prev => ({ ...prev, format: value as CuratedContentFormat })),
@@ -567,16 +574,21 @@ export default function CuratedContentAdminScreen() {
         label="Media or resource URL"
         value={form.mediaUrl ?? ''}
         onChangeText={text => setForm(prev => ({ ...prev, mediaUrl: text }))}
+        maxLength={2048}
+        autoCapitalize="none"
       />
       <Input
         label="Thumbnail URL"
         value={form.thumbnailUrl ?? ''}
         onChangeText={text => setForm(prev => ({ ...prev, thumbnailUrl: text }))}
+        maxLength={2048}
+        autoCapitalize="none"
       />
       <Input
         label="Author name"
         value={form.authorName ?? ''}
         onChangeText={text => setForm(prev => ({ ...prev, authorName: text }))}
+        maxLength={80}
       />
       <Input
         label="Mentor recommendation note"
@@ -584,18 +596,28 @@ export default function CuratedContentAdminScreen() {
         onChangeText={text => setForm(prev => ({ ...prev, mentorRecommendationNote: text }))}
         multiline
         numberOfLines={3}
+        maxLength={1000}
       />
       <Input
         label="Marketplace recommendation URL"
         value={form.marketplaceRecommendationUrl ?? ''}
         onChangeText={text => setForm(prev => ({ ...prev, marketplaceRecommendationUrl: text }))}
+        maxLength={2048}
+        autoCapitalize="none"
       />
       <Input
         label="Related mentor IDs (comma separated)"
         value={mentorIdsText}
         onChangeText={setMentorIdsText}
+        maxLength={2000}
+        autoCapitalize="none"
       />
-      <Input label="Tags (comma separated)" value={tagsText} onChangeText={setTagsText} />
+      <Input
+        label="Tags (comma separated)"
+        value={tagsText}
+        onChangeText={setTagsText}
+        maxLength={1000}
+      />
       <View style={styles.formActions}>
         <Button
           title="Save draft"
@@ -633,6 +655,7 @@ export default function CuratedContentAdminScreen() {
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Search by title or summary"
+              maxLength={200}
             />
             {renderFilters()}
           </Card>

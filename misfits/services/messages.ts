@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   limit,
+  onSnapshot,
   orderBy,
   query,
   updateDoc,
@@ -15,7 +16,9 @@ import {
 
 import { db } from './firebase';
 import { getCurrentUser } from './auth';
-import { Message, MessageThread, ThreadParticipantProfile } from '../types';
+import { Message, MessageReport, MessageThread, ThreadParticipantProfile } from '../types';
+import { isEitherBlocked } from './block';
+import { MAX_LENGTHS, sanitizeMultiline, sanitizeText } from '../utils/sanitize';
 
 type ThreadDocument = MessageThread & {
   participantKey?: string;
@@ -64,41 +67,24 @@ const ensureMessagingAllowed = (actingUserId: string) => {
   }
 };
 
-const sanitizeMessage = (text: string): string => {
-  return text.trim().slice(0, 1000);
-};
+// Sanitize outbound message text: strips HTML, control chars, and caps length.
+const sanitizeMessage = (text: string): string => sanitizeMultiline(text, MAX_LENGTHS.message);
+
+const sanitizeParticipantName = (name: string | undefined): string =>
+  sanitizeText(name ?? '', MAX_LENGTHS.name);
 
 export const fetchThreads = async (userId: string): Promise<MessageThread[]> => {
-  if (!userId) {
-    console.log('[fetchThreads] No userId provided');
-    return [];
-  }
+  if (!userId) return [];
 
   try {
-    console.log('[fetchThreads] Querying threads for userId:', userId);
     const threadsQuery = query(threadsCollection, where('participantIds', 'array-contains', userId));
     const snapshot = await getDocs(threadsQuery);
-    console.log('[fetchThreads] Found', snapshot.docs.length, 'thread documents');
-    
-    const threads = snapshot.docs.map(docSnap => {
-      const thread = mapThreadDoc(docSnap);
-      console.log('[fetchThreads] Mapped thread:', thread.id, {
-        participantIds: thread.participantIds,
-        participantNames: thread.participantNames,
-        lastMessage: thread.lastMessage,
-        lastMessageTime: thread.lastMessageTime,
-      });
-      return thread;
-    });
-
-    const sorted = threads.sort((a, b) => {
+    const threads = snapshot.docs.map(docSnap => mapThreadDoc(docSnap));
+    return threads.sort((a, b) => {
       const aTime = a.lastMessageTime || a.updatedAt || '';
       const bTime = b.lastMessageTime || b.updatedAt || '';
       return new Date(bTime).getTime() - new Date(aTime).getTime();
     });
-    
-    console.log('[fetchThreads] Returning', sorted.length, 'sorted threads');
-    return sorted;
   } catch (error) {
     console.error('[messages] Failed to fetch threads', error);
     throw error instanceof Error ? error : new Error('Unable to load message threads');
@@ -160,6 +146,10 @@ export const sendMessage = async (
 
   ensureMessagingAllowed(fromUserId);
 
+  if (await isEitherBlocked(fromUserId, toUserId)) {
+    throw new Error('You cannot send messages to this user.');
+  }
+
   const sanitized = sanitizeMessage(text);
   if (!sanitized) {
     throw new Error('Message cannot be empty');
@@ -211,22 +201,36 @@ export const startNewThread = async (
 
   ensureMessagingAllowed(currentUserId);
 
+  const safeCurrentName = sanitizeParticipantName(currentUserName);
+  const safeOtherName = sanitizeParticipantName(otherUserName);
   const participantIds = [currentUserId, otherUserId];
-  const participantNames = [currentUserName, otherUserName];
+  const participantNames = [safeCurrentName, safeOtherName];
   const participants = buildParticipantsRecord([
-    { id: currentUserId, name: currentUserName },
-    { id: otherUserId, name: otherUserName },
+    { id: currentUserId, name: safeCurrentName },
+    { id: otherUserId, name: safeOtherName },
   ]);
   const participantKey = buildParticipantKey(participantIds);
   const sanitizedMessage = sanitizeMessage(initialMessage);
   const timestamp = new Date().toISOString();
 
   const findExistingThread = async (): Promise<MessageThread | null> => {
-    const existingQuery = query(threadsCollection, where('participantKey', '==', participantKey), limit(1));
+    // Both filters are required: participantIds satisfies the list security rule
+    // (which requires request.auth.uid in resource.data.participantIds), while
+    // participantKey narrows the result to this exact pair of participants.
+    const existingQuery = query(
+      threadsCollection,
+      where('participantIds', 'array-contains', currentUserId),
+      where('participantKey', '==', participantKey),
+      limit(1),
+    );
     const snapshot = await getDocs(existingQuery);
     if (snapshot.empty) return null;
     return mapThreadDoc(snapshot.docs[0]);
   };
+
+  if (await isEitherBlocked(currentUserId, otherUserId)) {
+    throw new Error('Cannot start a conversation with this user.');
+  }
 
   try {
     const existingThread = await findExistingThread();
@@ -278,6 +282,82 @@ export const startNewThread = async (
   } catch (error) {
     console.error('[messages] Failed to start thread', error);
     throw error instanceof Error ? error : new Error('Unable to start conversation');
+  }
+};
+
+/**
+ * Subscribe to real-time message updates for a thread.
+ * Returns an unsubscribe function to be called on cleanup.
+ * On network loss the Firestore SDK reconnects automatically;
+ * `onError` is called when a persistent error (e.g. permission denied) occurs.
+ */
+export const subscribeToMessages = (
+  threadId: string,
+  onUpdate: (messages: Message[]) => void,
+  onError: (error: Error) => void,
+): (() => void) => {
+  const messagesRef = collection(doc(threadsCollection, threadId), 'messages');
+  const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
+
+  return onSnapshot(
+    messagesQuery,
+    (snapshot) => {
+      const messages: Message[] = snapshot.docs
+        .map(msgDoc => {
+          const data = msgDoc.data() as Message;
+          return {
+            id: msgDoc.id,
+            fromUserId: data.fromUserId,
+            toUserId: data.toUserId,
+            text: data.text,
+            timestamp: data.timestamp,
+            flaggedKeywords: data.flaggedKeywords,
+            flaggedReviewed: data.flaggedReviewed,
+          };
+        })
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      onUpdate(messages);
+    },
+    (error) => {
+      console.error('[messages] Real-time subscription error', error);
+      onError(error instanceof Error ? error : new Error('Real-time connection failed'));
+    },
+  );
+};
+
+/**
+ * Report a message for moderation review.
+ * Creates a document in the top-level `reports` collection.
+ * A user cannot interact with the same message twice — callers should
+ * guard against duplicate submissions in the UI.
+ */
+export const reportMessage = async (
+  threadId: string,
+  messageId: string,
+  reportedById: string,
+  reason: string,
+): Promise<void> => {
+  if (!threadId || !messageId || !reportedById) {
+    throw new Error('Invalid report parameters');
+  }
+
+  ensureMessagingAllowed(reportedById);
+
+  const sanitizedReason = sanitizeText(reason, MAX_LENGTHS.shortLine);
+  const report: Omit<MessageReport, 'id'> = {
+    threadId,
+    messageId,
+    reportedById,
+    reason: sanitizedReason || 'No reason provided',
+    timestamp: new Date().toISOString(),
+    status: 'pending',
+  };
+
+  try {
+    await addDoc(collection(db, 'reports'), report);
+  } catch (error) {
+    console.error('[messages] Failed to report message', error);
+    throw error instanceof Error ? error : new Error('Unable to submit report');
   }
 };
 

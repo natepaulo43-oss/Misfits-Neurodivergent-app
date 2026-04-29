@@ -60,6 +60,7 @@ export interface StudentProfile {
   neurodivergence?: NeurodivergenceOption;
   strengthsText?: string;
   challengesText?: string;
+  dismissedMentorIds?: string[];
 }
 
 export type MenteeAgeRange = 'middle_school' | 'high_school' | 'college' | 'adult';
@@ -97,6 +98,7 @@ export interface MentorProfile {
   shortBio?: string;
   funFact?: string;
   acceptingIntroRequests?: boolean;
+  blockedStudentIds?: string[];
 }
 
 export interface CuratedContent {
@@ -143,6 +145,7 @@ export interface User {
   suspensionReason?: string;
   messagingDisabled?: boolean;
   mentorMatchingDisabled?: boolean;
+  pushToken?: string;
 }
 
 export interface Mentor {
@@ -222,6 +225,22 @@ export interface MessageThread {
   lastMessageTime: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface MessageReport {
+  id: string;
+  threadId: string;
+  messageId: string;
+  reportedById: string;
+  reason: string;
+  timestamp: string;
+  status: 'pending' | 'reviewed' | 'dismissed';
+}
+
+export interface BlockRecord {
+  fromUserId: string;
+  toUserId: string;
+  createdAt: string;
 }
 
 export type MatchStatus = 'pending' | 'active' | 'ended';
@@ -315,4 +334,15 @@ export interface TimeSlot {
   available: boolean;
 }
 
-export type SessionRecord = Session;
+export interface SessionRecord {
+  id: string;
+  matchId?: string;
+  studentId: string;
+  mentorId: string;
+  scheduledFor?: string;
+  status: SessionStatus;
+  createdAt: string;
+  updatedAt: string;
+  topic?: string;
+  notes?: string;
+}

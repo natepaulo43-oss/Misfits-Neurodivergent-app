@@ -8,7 +8,10 @@ service cloud.firestore {
     // ============================================
     
     function isSignedIn() {
-      return request.auth != null;
+      // Also enforce a 30-day maximum session lifetime.
+      // auth_time is seconds-since-epoch; add 30 days (2 592 000 s) then compare.
+      return request.auth != null &&
+        timestamp.value((request.auth.token.auth_time + 2592000) * 1000) > request.time;
     }
     
     function hasValidAppCheck() {
@@ -63,22 +66,46 @@ service cloud.firestore {
     // ============================================
     
     match /users/{userId} {
-      // Users can read their own document
-      // Admins can read all users
-      // All authenticated users can read basic user info (for messaging, matching)
-      allow read: if isSignedIn();
+      // Users can read their own full document; admins can read all user documents
+      allow get: if isOwner(userId) || isAdmin();
       
-      // Users can create their own document (initial signup/onboarding)
-      allow create: if isOwner(userId);
+      // Any signed-in user can read mentor-role documents (for discovery and session booking)
+      // Student/admin-role documents are NOT readable by other users
+      allow get: if isSignedIn() && resource.data.role == 'mentor';
       
-      // Users can update their own document (profile updates)
-      // Only blocked if account is suspended OR they're trying to suspend themselves
-      allow update: if isOwner(userId) && 
-        !resource.data.get('accountSuspended', false) &&
-        !request.resource.data.get('accountSuspended', false);
+      // List queries: only mentor-role documents are visible to other users.
+      // Student documents (which contain neurodivergence, age, challengesText, etc.)
+      // must never be returned by an arbitrary collection query from non-admins.
+      // Firestore evaluates resource.data.role per-document at query time, so a
+      // query with where('role','==','mentor') will pass; a bare getDocs() will not.
+      allow list: if isSignedIn() && (resource.data.role == 'mentor' || isAdmin());
+      
+      // Users can create their own document (initial signup/onboarding).
+      // ageVerifiedAt must be a server-generated timestamp written by the normal
+      // signup path — reject any direct write that omits it, which would indicate
+      // the client-side age check was bypassed.
+      allow create: if isOwner(userId) &&
+        request.resource.data.ageVerifiedAt is timestamp;
+      
+      // Users can update their own document when their account is active.
+      // Admin-controlled fields (suspension, messaging, matching flags) are
+      // immutable by the owner — only admins can change them via allow write above.
+      allow update: if isOwner(userId) &&
+        isAccountActive() &&
+        !(request.resource.data.role in ['admin', 'super_admin']) &&
+        request.resource.data.get('accountSuspended', false) == resource.data.get('accountSuspended', false) &&
+        request.resource.data.get('suspensionReason', '') == resource.data.get('suspensionReason', '') &&
+        request.resource.data.get('messagingDisabled', false) == resource.data.get('messagingDisabled', false) &&
+        request.resource.data.get('mentorMatchingDisabled', false) == resource.data.get('mentorMatchingDisabled', false);
       
       // Admins can write any user document
       allow write: if isAdmin();
+
+      // Backup codes subcollection — hashes must never be exposed to any client.
+      // All reads and writes go through Cloud Functions (admin SDK bypasses these rules).
+      match /backupCodes/{codeId} {
+        allow read, write: if false;
+      }
     }
     
     // ============================================
@@ -90,17 +117,23 @@ service cloud.firestore {
       allow get: if isSignedIn() && 
         request.auth.uid in resource.data.participantIds;
       
-      // Allow authenticated users to list/query threads to find existing conversations
-      // This is needed for the findExistingThread query in startNewThread
-      allow list: if isSignedIn();
-      
-      // Any authenticated user can create a thread
-      // The app logic (ensureMessagingAllowed) handles additional checks
+      // List queries are restricted to threads the requesting user participates in.
+      // The client MUST include where('participantIds','array-contains', uid) so
+      // Firestore can evaluate resource.data.participantIds at query time.
+      allow list: if isSignedIn() &&
+        request.auth.uid in resource.data.participantIds;
+
+      // Messaging-enabled users can create threads they are part of.
+      // Neither participant may have blocked the other.
       allow create: if isSignedIn() &&
-        request.auth.uid in request.resource.data.participantIds;
-      
-      // Participants can update thread metadata (lastMessage, etc.)
+        canMessage() &&
+        request.auth.uid in request.resource.data.participantIds &&
+        !exists(/databases/$(database)/documents/blocks/$(request.resource.data.participantIds[0] + "_" + request.resource.data.participantIds[1])) &&
+        !exists(/databases/$(database)/documents/blocks/$(request.resource.data.participantIds[1] + "_" + request.resource.data.participantIds[0]));
+
+      // Participants with messaging enabled can update thread metadata
       allow update: if isSignedIn() &&
+        canMessage() &&
         request.auth.uid in resource.data.participantIds;
       
       // Admins can read all threads (for moderation)
@@ -118,11 +151,14 @@ service cloud.firestore {
         allow read: if isSignedIn() && 
           request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantIds;
         
-        // Participants can create messages in their threads
-        // The app logic (ensureMessagingAllowed) handles additional checks
+        // Participants with messaging enabled can create messages in their threads.
+        // Block checks prevent either party from sending if a block exists.
         allow create: if isSignedIn() &&
+          canMessage() &&
           request.auth.uid in get(/databases/$(database)/documents/threads/$(threadId)).data.participantIds &&
-          request.auth.uid == request.resource.data.fromUserId;
+          request.auth.uid == request.resource.data.fromUserId &&
+          !exists(/databases/$(database)/documents/blocks/$(request.resource.data.fromUserId + "_" + request.resource.data.toUserId)) &&
+          !exists(/databases/$(database)/documents/blocks/$(request.resource.data.toUserId + "_" + request.resource.data.fromUserId));
         
         // Admins can read all messages (for moderation)
         allow read: if isAdmin();
@@ -287,6 +323,51 @@ service cloud.firestore {
       
       // Admins can read all purchases
       allow read: if isAdmin();
+    }
+
+    // ============================================
+    // Message Reports Collection
+    // ============================================
+
+    match /reports/{reportId} {
+      // Users can submit reports for messages in threads they participate in
+      allow create: if isSignedIn() &&
+        isAccountActive() &&
+        request.auth.uid == request.resource.data.reportedById;
+
+      // Users can read their own submitted reports
+      allow get: if isSignedIn() &&
+        request.auth.uid == resource.data.reportedById;
+
+      // Admins can read and update all reports (triage, resolve)
+      allow read, update: if isAdmin();
+
+      // Reports are never deleted (audit trail)
+      allow delete: if false;
+    }
+
+    // ============================================
+    // Blocks Collection
+    // Document ID convention: {fromUserId}_{toUserId}
+    // ============================================
+
+    match /blocks/{blockId} {
+      // The blocking user can create and revoke their own blocks
+      allow create: if isSignedIn() &&
+        isAccountActive() &&
+        request.auth.uid == request.resource.data.fromUserId;
+
+      allow delete: if isSignedIn() &&
+        request.auth.uid == resource.data.fromUserId;
+
+      // Both parties can read a block document (to know they're blocked)
+      allow read: if isSignedIn() &&
+        (request.auth.uid == resource.data.fromUserId ||
+         request.auth.uid == resource.data.toUserId);
+
+      allow read, write: if isAdmin();
+
+      // Blocks are soft-deleted (delete op above); document level delete is fine
     }
   }
 }

@@ -256,6 +256,7 @@ export default function MentorOnboardingScreen() {
           value={fullName}
           onChangeText={setFullName}
           placeholder="Dr. Sarah Chen"
+          maxLength={80}
         />
         <Input
           label="Age"
@@ -263,18 +264,21 @@ export default function MentorOnboardingScreen() {
           onChangeText={setAge}
           placeholder="Optional"
           keyboardType="number-pad"
+          maxLength={3}
         />
         <Input
           label="City *"
           value={locationCity}
           onChangeText={setLocationCity}
           placeholder="e.g., Austin"
+          maxLength={80}
         />
         <Input
           label="State / Region *"
           value={locationState}
           onChangeText={setLocationState}
           placeholder="e.g., TX"
+          maxLength={80}
         />
         <Input
           label="Current role / experience *"
@@ -282,6 +286,7 @@ export default function MentorOnboardingScreen() {
           onChangeText={setCurrentRole}
           placeholder="Educational psychologist, 10+ years"
           multiline
+          maxLength={120}
         />
       </Section>
 
@@ -304,6 +309,7 @@ export default function MentorOnboardingScreen() {
             onChangeText={setExpertiseOther}
             placeholder="e.g., Sensory integration, Workplace coaching"
             multiline
+            maxLength={120}
           />
         )}
 
@@ -404,6 +410,7 @@ export default function MentorOnboardingScreen() {
           onChangeText={setShortBio}
           placeholder="What should students know about you?"
           multiline
+          maxLength={1000}
         />
         <Input
           label="Fun fact or icebreaker"
@@ -411,6 +418,7 @@ export default function MentorOnboardingScreen() {
           onChangeText={setFunFact}
           placeholder="Something to help mentees connect with you"
           multiline
+          maxLength={120}
         />
       </Section>
 

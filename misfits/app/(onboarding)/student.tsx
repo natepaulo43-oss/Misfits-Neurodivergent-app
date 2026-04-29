@@ -244,6 +244,7 @@ export default function StudentOnboardingScreen() {
           value={fullName}
           onChangeText={setFullName}
           placeholder="Alex Johnson"
+          maxLength={80}
         />
         <Input
           label="Age *"
@@ -251,6 +252,7 @@ export default function StudentOnboardingScreen() {
           onChangeText={setAge}
           placeholder="16"
           keyboardType="number-pad"
+          maxLength={3}
         />
         <Text style={styles.label}>Grade / Level *</Text>
         <View style={styles.chipRow}>
@@ -268,12 +270,14 @@ export default function StudentOnboardingScreen() {
           value={locationCity}
           onChangeText={setLocationCity}
           placeholder="e.g., Los Angeles"
+          maxLength={80}
         />
         <Input
           label="State / Region *"
           value={locationState}
           onChangeText={setLocationState}
           placeholder="e.g., CA"
+          maxLength={80}
         />
       </Section>
 
@@ -295,6 +299,7 @@ export default function StudentOnboardingScreen() {
             onChangeText={setSupportGoalsOther}
             placeholder="Describe the support you're looking for"
             multiline
+            maxLength={1000}
           />
         )}
       </Section>
@@ -343,6 +348,7 @@ export default function StudentOnboardingScreen() {
           onChangeText={setPreferredCommunicationNotes}
           placeholder="e.g., Prefer afternoons, short check-ins..."
           multiline
+          maxLength={1000}
         />
       </Section>
 
@@ -402,6 +408,7 @@ export default function StudentOnboardingScreen() {
           onChangeText={setStrengthsText}
           placeholder="e.g., Creative problem solving"
           multiline
+          maxLength={1000}
         />
         <Input
           label="Areas of challenge"
@@ -409,6 +416,7 @@ export default function StudentOnboardingScreen() {
           onChangeText={setChallengesText}
           placeholder="e.g., Staying organized before exams"
           multiline
+          maxLength={1000}
         />
       </Section>
 

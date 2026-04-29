@@ -152,7 +152,7 @@ const calculateGuidanceStyleScore = (
   const styleMapping: Record<string, string[]> = {
     step_by_step: ['structured_guidance'],
     open_discussion: ['open_discussion', 'collaborative_problem_solving'],
-    visual_examples: ['structured_guidance', 'hands_on'],
+    visual_examples: ['hands_on', 'collaborative_problem_solving'],
     trial_error: ['hands_on', 'collaborative_problem_solving'],
   };
   
@@ -317,10 +317,18 @@ export const computeLocalMatches = async (
   student: StudentProfile,
   mentors: Mentor[],
   availabilityMap: Map<string, boolean>,
+  currentStudentId?: string,
 ): Promise<LocalMatchResponse> => {
   const matches: LocalMatchResult[] = [];
-  
+  const dismissedIds = new Set(student.dismissedMentorIds ?? []);
+
   for (const mentor of mentors) {
+    if (dismissedIds.has(mentor.id)) continue;
+    if (
+      currentStudentId != null &&
+      mentor.mentorProfile?.blockedStudentIds?.includes(currentStudentId)
+    ) continue;
+
     const isAvailable = availabilityMap.get(mentor.id) ?? false;
     const match = computeLocalMatch(student, mentor, isAvailable);
     

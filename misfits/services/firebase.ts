@@ -23,11 +23,9 @@ if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
     messagingSenderId: firebaseConfig.messagingSenderId ? 'SET' : 'MISSING',
     appId: firebaseConfig.appId ? 'SET' : 'MISSING',
   });
-  console.error('Constants.expoConfig?.extra:', Constants.expoConfig?.extra);
+  console.error('Constants.expoConfig?.extra keys:', Constants.expoConfig?.extra ? Object.keys(Constants.expoConfig.extra) : 'none');
   throw new Error('Missing required Firebase configuration. Check Vercel environment variables.');
 }
-
-console.log('Initializing Firebase with project:', firebaseConfig.projectId);
 
 const app: FirebaseApp = initializeApp(firebaseConfig);
 
@@ -98,8 +96,6 @@ initializeAppCheckForPlatform();
 
 const auth: Auth = getAuth(app);
 const db: Firestore = getFirestore(app);
-
-console.log('Firebase initialized successfully');
 
 export { auth, db, app };
 export default app;

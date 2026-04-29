@@ -68,6 +68,7 @@ export default function ForgotPasswordScreen() {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                maxLength={254}
               />
 
               {error ? <Text style={styles.error}>{error}</Text> : null}

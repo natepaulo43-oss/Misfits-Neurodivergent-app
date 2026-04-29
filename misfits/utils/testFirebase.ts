@@ -36,7 +36,7 @@ export const testFirebaseConnection = async () => {
     
     if (userDoc.exists()) {
       console.log('✓ User document exists');
-      console.log('  Data:', userDoc.data());
+      console.log('  Document fields:', Object.keys(userDoc.data() ?? {}));
     } else {
       console.log('⚠ User document does not exist (will be created on first write)');
     }

@@ -72,19 +72,27 @@ export default function MentorMatchesScreen() {
       setMentors(mentorData);
 
       const mentorsWithProfiles = mentorData.filter(m => m.mentorProfile);
-      
-      const mentorIds = mentorsWithProfiles.map(m => m.id);
+
+      const dismissedIds = new Set(user.studentProfile.dismissedMentorIds ?? []);
+      const eligibleMentors = mentorsWithProfiles.filter(m => {
+        if (dismissedIds.has(m.id)) return false;
+        if (m.mentorProfile?.blockedStudentIds?.includes(user.id)) return false;
+        return true;
+      });
+
+      const mentorIds = eligibleMentors.map(m => m.id);
       const availabilityMap = await batchCheckMentorAvailability(mentorIds);
       
       const localResult = await computeLocalMatches(
         user.studentProfile,
-        mentorsWithProfiles,
-        availabilityMap
+        eligibleMentors,
+        availabilityMap,
+        user.id,
       );
       setLocalMatches(localResult.matches);
       
       try {
-        const result = await fetchMentorMatches(user.studentProfile, mentorsWithProfiles);
+        const result = await fetchMentorMatches(user.studentProfile, eligibleMentors);
         setMatches(result.matches);
         setMetadata(result.metadata);
       } catch (apiErr) {
@@ -442,7 +450,10 @@ export default function MentorMatchesScreen() {
 
   const bestFits = localMatches.slice(0, 5);
   const bestFitIds = new Set(bestFits.map(m => m.mentorId));
-  const remainingMentors = mentors.filter(m => !bestFitIds.has(m.id));
+  const dismissedIdSet = new Set(user?.studentProfile?.dismissedMentorIds ?? []);
+  const remainingMentors = mentors.filter(m =>
+    !bestFitIds.has(m.id) && !dismissedIdSet.has(m.id),
+  );
 
   return (
     <Screen

@@ -423,6 +423,7 @@ export default function SessionDetailScreen() {
                   placeholder="Enter reason..."
                   value={declineReason === 'Other' ? '' : declineReason}
                   onChangeText={setDeclineReason}
+                  maxLength={500}
                 />
               )}
               <View style={styles.modalActions}>
@@ -458,6 +459,7 @@ export default function SessionDetailScreen() {
                 onChangeText={setNoteText}
                 multiline
                 numberOfLines={4}
+                maxLength={2000}
               />
               <TextInput
                 style={[styles.textInput, styles.textInputMultiline]}
@@ -466,6 +468,7 @@ export default function SessionDetailScreen() {
                 onChangeText={setFollowUpsText}
                 multiline
                 numberOfLines={3}
+                maxLength={2000}
               />
               <View style={styles.modalActions}>
                 <TouchableOpacity

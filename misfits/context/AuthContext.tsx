@@ -4,6 +4,7 @@ import { MultiFactorResolver } from 'firebase/auth';
 import { User, UserRole } from '../types';
 import * as authApi from '../services/auth';
 import { auth } from '../services/firebase';
+import { getPendingLinkEmail } from '../services/authService';
 
 interface AuthContextType {
   user: User | null;
@@ -13,16 +14,18 @@ interface AuthContextType {
   emailVerified: boolean;
   mfaResolver: MultiFactorResolver | null;
   mfaRequired: boolean;
+  pendingLinkEmail: string | null;
   login: (email: string, password: string) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  loginWithGoogleNative: (idToken: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   setUserRole: (role: UserRole) => Promise<void>;
   requestMentorAccess: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
-  verifyMfaCode: (verificationId: string, code: string) => Promise<void>;
+  verifyMfaCode: (code: string) => Promise<void>;
   clearMfaResolver: () => void;
 }
 
@@ -33,11 +36,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(true);
   const [emailVerified, setEmailVerified] = useState(false);
   const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
+  const [pendingLinkEmail, setPendingLinkEmail] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = authApi.subscribeToAuthChanges(authUser => {
       setUser(authUser);
-      const isReviewer = auth.currentUser?.email === 'REDACTED';
+      const isReviewer = __DEV__ && auth.currentUser?.email === 'REDACTED';
       setEmailVerified(isReviewer || auth.currentUser?.emailVerified || false);
       setIsLoading(false);
     });
@@ -58,6 +62,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await withLoading(async () => {
       try {
         const loggedInUser = await authApi.login({ email, password });
+        setPendingLinkEmail(null);
         setUser(loggedInUser);
       } catch (error: any) {
         if (error?.code === 'auth/multi-factor-auth-required' && error?.resolver) {
@@ -75,12 +80,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await withLoading(async () => {
       try {
         const loggedInUser = await authApi.loginWithGoogleAccount();
+        setPendingLinkEmail(null);
         setUser(loggedInUser);
       } catch (error: any) {
         if (error?.code === 'auth/multi-factor-auth-required' && error?.resolver) {
           setMfaResolver(error.resolver);
           throw new Error('MFA verification required');
         }
+        // Capture email so login screen can pre-fill it for account linking
+        const linkEmail = getPendingLinkEmail();
+        if (linkEmail) setPendingLinkEmail(linkEmail);
+        throw error;
+      }
+    });
+  };
+
+  const loginWithGoogleNative = async (idToken: string) => {
+    await withLoading(async () => {
+      try {
+        const loggedInUser = await authApi.loginWithGoogleNative(idToken);
+        setPendingLinkEmail(null);
+        setUser(loggedInUser);
+      } catch (error: any) {
+        if (error?.code === 'auth/multi-factor-auth-required' && error?.resolver) {
+          setMfaResolver(error.resolver);
+          throw new Error('MFA verification required');
+        }
+        const linkEmail = getPendingLinkEmail();
+        if (linkEmail) setPendingLinkEmail(linkEmail);
         throw error;
       }
     });
@@ -132,11 +159,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(updatedUser);
   };
 
-  const verifyMfaCode = async (verificationId: string, code: string) => {
+  const verifyMfaCode = async (code: string) => {
     if (!mfaResolver) {
       throw new Error('No MFA resolver available');
     }
-    await authApi.completeMfaSignIn(mfaResolver, verificationId, code);
+    await authApi.completeMfaSignIn(mfaResolver, code);
     setMfaResolver(null);
   };
 
@@ -154,9 +181,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         emailVerified,
         mfaResolver,
         mfaRequired: !!mfaResolver,
+        pendingLinkEmail,
         login,
         loginWithEmail,
         loginWithGoogle,
+        loginWithGoogleNative,
         signUp,
         sendPasswordReset,
         logout,

@@ -1,8 +1,8 @@
-import React, { useRef, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Button, Input, Screen, Card, MFAChallenge } from '../../components';
 import { colors, spacing, typography } from '../../constants/theme';
 import { auth } from '../../services/firebase';
+import { useGoogleSignIn } from '../../hooks/useGoogleSignIn';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -19,9 +20,29 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { login, loginWithGoogle, mfaRequired } = useAuth();
+  const { login, loginWithGoogle, mfaRequired, pendingLinkEmail } = useAuth();
   const loginPendingRef = useRef(false);
   const googlePendingRef = useRef(false);
+
+  const handleNativeGoogleSuccess = () => {
+    const isReviewerAccount = __DEV__ && auth.currentUser?.email === 'REDACTED';
+    if (auth.currentUser && !auth.currentUser.emailVerified && !isReviewerAccount) {
+      router.replace('/(auth)/verify-email');
+      return;
+    }
+    router.replace('/');
+  };
+
+  const { signIn: nativeGoogleSignIn, loading: nativeGoogleLoading } = useGoogleSignIn(
+    handleNativeGoogleSuccess,
+    (errMsg) => setError(errMsg),
+  );
+
+  useEffect(() => {
+    if (pendingLinkEmail) {
+      setEmail(pendingLinkEmail);
+    }
+  }, [pendingLinkEmail]);
 
   const handleLogin = async () => {
     if (loginPendingRef.current) {
@@ -39,8 +60,9 @@ export default function LoginScreen() {
 
     try {
       await login(email, password);
-      
-      if (auth.currentUser && !auth.currentUser.emailVerified && auth.currentUser.email !== 'REDACTED') {
+
+      const isReviewerAccount = __DEV__ && auth.currentUser?.email === 'REDACTED';
+      if (auth.currentUser && !auth.currentUser.emailVerified && !isReviewerAccount) {
         router.replace('/(auth)/verify-email');
         return;
       }
@@ -71,8 +93,9 @@ export default function LoginScreen() {
 
     try {
       await loginWithGoogle();
-      
-      if (auth.currentUser && !auth.currentUser.emailVerified && auth.currentUser.email !== 'REDACTED') {
+
+      const isReviewerAccount = __DEV__ && auth.currentUser?.email === 'REDACTED';
+      if (auth.currentUser && !auth.currentUser.emailVerified && !isReviewerAccount) {
         router.replace('/(auth)/verify-email');
         return;
       }
@@ -126,6 +149,7 @@ export default function LoginScreen() {
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  maxLength={254}
                 />
 
                 <Input
@@ -134,6 +158,7 @@ export default function LoginScreen() {
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
+                  maxLength={128}
                 />
 
                 {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -171,12 +196,30 @@ export default function LoginScreen() {
                 )}
 
                 {Platform.OS !== 'web' && (
-                  <View style={styles.expoGoNotice}>
-                    <Text style={styles.expoGoNoticeText}>
-                      💡 Google Sign-In requires a development build. Use email/password for Expo Go testing.
+                  <>
+                    <View style={styles.divider}>
+                      <View style={styles.dividerLine} />
+                      <Text style={styles.dividerText}>OR</Text>
+                      <View style={styles.dividerLine} />
+                    </View>
+
+                    <Button
+                      title="Continue with Google"
+                      onPress={nativeGoogleSignIn}
+                      loading={nativeGoogleLoading}
+                      variant="outline"
+                      style={styles.googleButton}
+                    />
+                  </>
+                )}
+
+                {pendingLinkEmail ? (
+                  <View style={styles.linkNotice}>
+                    <Text style={styles.linkNoticeText}>
+                      An account already exists for {pendingLinkEmail}. Sign in with your password above to link your Google account.
                     </Text>
                   </View>
-                )}
+                ) : null}
 
                 <View style={styles.footer}>
                   <Text style={styles.footerText}>Don't have an account?</Text>
@@ -275,16 +318,17 @@ const styles = StyleSheet.create({
   googleButton: {
     marginBottom: spacing.sm,
   },
-  expoGoNotice: {
+  linkNotice: {
     backgroundColor: colors.surface,
     padding: spacing.md,
     borderRadius: 8,
     marginTop: spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
-  expoGoNoticeText: {
+  linkNoticeText: {
     ...typography.bodySmall,
     color: colors.textSecondary,
-    textAlign: 'center',
     lineHeight: 20,
   },
 });

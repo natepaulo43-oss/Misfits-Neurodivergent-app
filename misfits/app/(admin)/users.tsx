@@ -155,6 +155,7 @@ export default function AdminUsersScreen() {
         value={search}
         onChangeText={setSearch}
         containerStyle={styles.searchInput}
+        maxLength={200}
       />
 
       {filteredUsers.length === 0 ? (

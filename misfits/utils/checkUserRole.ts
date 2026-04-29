@@ -10,10 +10,16 @@ import { getCurrentUser } from '../services/auth';
 export async function checkUserRole() {
   const currentUser = getCurrentUser();
   
+  const maskEmail = (email?: string | null) => {
+    if (!email) return '[none]';
+    const [, domain] = email.split('@');
+    return `[redacted]@${domain ?? 'unknown'}`;
+  };
+
   console.log('=== USER ROLE DIAGNOSTIC ===');
-  console.log('1. Current User from Auth Context:', currentUser);
+  console.log('1. Current User from Auth Context:');
   console.log('   - ID:', currentUser?.id);
-  console.log('   - Email:', currentUser?.email);
+  console.log('   - Email:', maskEmail(currentUser?.email));
   console.log('   - Role:', currentUser?.role);
   console.log('   - Account Suspended:', currentUser?.accountSuspended);
   
@@ -33,7 +39,7 @@ export async function checkUserRole() {
       const data = userDoc.data();
       console.log('   - Role field:', data.role);
       console.log('   - Account Suspended:', data.accountSuspended);
-      console.log('   - Full data:', data);
+      console.log('   - Document fields:', Object.keys(data));
       
       if (data.role === 'mentor') {
         console.log('✅ User has mentor role in Firestore');

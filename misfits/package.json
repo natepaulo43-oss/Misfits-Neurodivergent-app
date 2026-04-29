@@ -8,7 +8,9 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "debug-env": "node -e \"Object.keys(process.env).filter(k => k.startsWith('EXPO_PUBLIC_')).forEach(k => console.log(k + '=' + (process.env[k] ? 'SET' : 'MISSING')))\"",
-    "vercel-build": "npm run debug-env && node node_modules/@expo/cli/build/bin/cli export -p web"
+    "vercel-build": "npm run debug-env && node node_modules/@expo/cli/build/bin/cli export -p web",
+    "test": "jest --testPathPattern=__tests__",
+    "test:watch": "jest --testPathPattern=__tests__ --watch"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -33,7 +35,10 @@
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.1.10",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.6",
     "typescript": "~5.9.2"
   },
   "private": true

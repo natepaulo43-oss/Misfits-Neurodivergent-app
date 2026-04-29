@@ -16,6 +16,14 @@ import {
 } from 'firebase/firestore';
 
 import { db } from './firebase';
+import { getCurrentUser } from './auth';
+import {
+  MAX_LENGTHS,
+  sanitizeId,
+  sanitizeMultiline,
+  sanitizeOptional,
+  sanitizeText,
+} from '../utils/sanitize';
 import {
   MatchRecord,
   MatchStatus,
@@ -28,6 +36,13 @@ import {
   User,
   UserRole,
 } from '../types';
+
+const requireAdmin = (): void => {
+  const user = getCurrentUser();
+  if (!user || user.role !== 'admin') {
+    throw new Error('Admin access required');
+  }
+};
 
 type UserDocument = DocumentData & {
   name?: string;
@@ -70,11 +85,13 @@ const mapUserDoc = (snapshot: DocumentSnapshot<UserDocument>): User => {
 };
 
 export const fetchAllUsers = async (): Promise<User[]> => {
+  requireAdmin();
   const snapshot = await getDocs(usersCollection);
   return snapshot.docs.map(docSnap => mapUserDoc(docSnap as DocumentSnapshot<UserDocument>));
 };
 
 export const fetchPendingMentorApplications = async (): Promise<User[]> => {
+  requireAdmin();
   const pendingQuery = query(usersCollection, where('pendingRole', '==', 'mentor'));
   const snapshot = await getDocs(pendingQuery);
 
@@ -94,13 +111,15 @@ export const reviewMentorApplication = async (
     adminNotes?: string;
   },
 ): Promise<void> => {
+  requireAdmin();
   const userRef = doc(usersCollection, userId);
+  const safeNotes = sanitizeMultiline(params.adminNotes ?? '', MAX_LENGTHS.notes);
   if (params.decision === 'approve') {
     await updateDoc(userRef, {
       role: 'mentor',
       pendingRole: null,
       mentorApplicationStatus: 'approved',
-      mentorApplicationAdminNotes: params.adminNotes ?? '',
+      mentorApplicationAdminNotes: safeNotes,
       mentorApplicationAppealText: null,
       mentorApplicationAppealSubmittedAt: null,
     });
@@ -109,7 +128,7 @@ export const reviewMentorApplication = async (
 
   await updateDoc(userRef, {
     mentorApplicationStatus: 'rejected',
-    mentorApplicationAdminNotes: params.adminNotes ?? '',
+    mentorApplicationAdminNotes: safeNotes,
   });
 };
 
@@ -118,14 +137,19 @@ export const updateUserSuspension = async (
   suspend: boolean,
   reason?: string,
 ): Promise<void> => {
+  requireAdmin();
   const userRef = doc(usersCollection, userId);
+  const safeReason = suspend
+    ? sanitizeText(reason ?? '', MAX_LENGTHS.notes) || 'Suspended by administrator'
+    : null;
   await updateDoc(userRef, {
     accountSuspended: suspend,
-    suspensionReason: suspend ? reason ?? 'Suspended by administrator' : null,
+    suspensionReason: safeReason,
   });
 };
 
 export const toggleUserMessaging = async (userId: string, disabled: boolean): Promise<void> => {
+  requireAdmin();
   const userRef = doc(usersCollection, userId);
   await updateDoc(userRef, {
     messagingDisabled: disabled,
@@ -133,6 +157,7 @@ export const toggleUserMessaging = async (userId: string, disabled: boolean): Pr
 };
 
 export const toggleMentorMatching = async (userId: string, disabled: boolean): Promise<void> => {
+  requireAdmin();
   const userRef = doc(usersCollection, userId);
   await updateDoc(userRef, {
     mentorMatchingDisabled: disabled,
@@ -164,11 +189,13 @@ const mapThreadDoc = (snapshot: DocumentSnapshot<ThreadDocument>): MessageThread
 };
 
 export const fetchAllThreadsForAudit = async (): Promise<MessageThread[]> => {
+  requireAdmin();
   const snapshot = await getDocs(query(threadsCollection, orderBy('updatedAt', 'desc')));
   return snapshot.docs.map(docSnap => mapThreadDoc(docSnap));
 };
 
 export const fetchThreadMessagesForAudit = async (threadId: string): Promise<Message[]> => {
+  requireAdmin();
   if (!threadId) return [];
   const messagesCollection = collection(doc(threadsCollection, threadId), 'messages');
   const snapshot = await getDocs(query(messagesCollection, orderBy('timestamp', 'asc')));
@@ -192,6 +219,7 @@ export const markMessageReviewed = async (
   messageId: string,
   adminName: string,
 ): Promise<void> => {
+  requireAdmin();
   const messageRef = doc(collection(doc(threadsCollection, threadId), 'messages'), messageId);
   await updateDoc(messageRef, {
     flaggedReviewed: true,
@@ -215,6 +243,7 @@ const mapMatchDoc = (snapshot: DocumentSnapshot<MatchRecord>): MatchRecord => {
 };
 
 export const fetchMatches = async (): Promise<MatchRecord[]> => {
+  requireAdmin();
   const snapshot = await getDocs(query(matchesCollection, orderBy('createdAt', 'desc')));
   return snapshot.docs.map(docSnap => mapMatchDoc(docSnap as DocumentSnapshot<MatchRecord>));
 };
@@ -226,17 +255,23 @@ export const createManualMatch = async (payload: {
   mentorName?: string;
   notes?: string;
 }): Promise<void> => {
+  requireAdmin();
+  const studentId = sanitizeId(payload.studentId);
+  const mentorId = sanitizeId(payload.mentorId);
+  if (!studentId || !mentorId) {
+    throw new Error('Invalid student or mentor ID');
+  }
   const timestamp = new Date().toISOString();
   const newMatch: MatchRecord = {
     id: '',
-    studentId: payload.studentId,
-    studentName: payload.studentName,
-    mentorId: payload.mentorId,
-    mentorName: payload.mentorName,
+    studentId,
+    studentName: sanitizeOptional(payload.studentName, MAX_LENGTHS.name),
+    mentorId,
+    mentorName: sanitizeOptional(payload.mentorName, MAX_LENGTHS.name),
     status: 'active',
     createdAt: timestamp,
     updatedAt: timestamp,
-    notes: payload.notes,
+    notes: sanitizeOptional(payload.notes, MAX_LENGTHS.notes, true),
   };
 
   await addDoc(matchesCollection, newMatch);
@@ -247,15 +282,17 @@ export const updateMatchStatus = async (
   status: MatchStatus,
   notes?: string,
 ): Promise<void> => {
+  requireAdmin();
   const matchRef = doc(matchesCollection, matchId);
   await updateDoc(matchRef, {
     status,
-    notes,
+    notes: sanitizeOptional(notes, MAX_LENGTHS.notes, true) ?? null,
     updatedAt: new Date().toISOString(),
   });
 };
 
 export const deleteMatch = async (matchId: string): Promise<void> => {
+  requireAdmin();
   const matchRef = doc(matchesCollection, matchId);
   await deleteDoc(matchRef);
 };
@@ -277,6 +314,7 @@ const mapSessionDoc = (snapshot: DocumentSnapshot<SessionRecord>): SessionRecord
 };
 
 export const fetchSessions = async (): Promise<SessionRecord[]> => {
+  requireAdmin();
   const snapshot = await getDocs(query(sessionsCollection, orderBy('scheduledFor', 'desc')));
   return snapshot.docs.map(docSnap => mapSessionDoc(docSnap as DocumentSnapshot<SessionRecord>));
 };
@@ -286,10 +324,11 @@ export const updateSessionStatus = async (
   status: SessionStatus,
   notes?: string,
 ): Promise<void> => {
+  requireAdmin();
   const sessionRef = doc(sessionsCollection, sessionId);
   await updateDoc(sessionRef, {
     status,
-    notes,
+    notes: sanitizeOptional(notes, MAX_LENGTHS.notes, true) ?? null,
     updatedAt: new Date().toISOString(),
   });
 };

@@ -184,12 +184,16 @@ export default function MatchesOversightScreen() {
             value={form.studentId}
             onChangeText={text => setForm(prev => ({ ...prev, studentId: text }))}
             containerStyle={styles.formInput}
+            maxLength={128}
+            autoCapitalize="none"
           />
           <Input
             label="Mentor ID"
             value={form.mentorId}
             onChangeText={text => setForm(prev => ({ ...prev, mentorId: text }))}
             containerStyle={styles.formInput}
+            maxLength={128}
+            autoCapitalize="none"
           />
         </View>
         <Input
@@ -197,6 +201,7 @@ export default function MatchesOversightScreen() {
           value={form.notes}
           onChangeText={text => setForm(prev => ({ ...prev, notes: text }))}
           multiline
+          maxLength={2000}
         />
         <Button title="Create match" onPress={handleCreateMatch} loading={creating} />
       </Card>

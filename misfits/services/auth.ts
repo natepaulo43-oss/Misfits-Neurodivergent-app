@@ -1,22 +1,32 @@
-import { 
-  User as FirebaseUser, 
-  onAuthStateChanged, 
+import {
+  User as FirebaseUser,
+  onAuthStateChanged,
   updateProfile,
   MultiFactorResolver,
-  PhoneAuthProvider,
-  PhoneMultiFactorGenerator,
-  RecaptchaVerifier,
+  TotpMultiFactorGenerator,
+  TotpSecret,
   getMultiFactorResolver,
   deleteUser,
   sendEmailVerification,
+  multiFactor,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, FieldValue, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 import { auth, db } from './firebase';
 import { MentorApplicationStatus, User, UserRole } from '../types';
 import {
+  MAX_LENGTHS,
+  sanitizeEmail,
+  sanitizeMultiline,
+  sanitizeOptional,
+  sanitizeTagList,
+  sanitizeText,
+} from '../utils/sanitize';
+import {
+  linkPendingGoogleCredential,
   loginWithEmail as loginWithEmailService,
   loginWithGoogle as loginWithGoogleService,
+  loginWithGoogleIdToken as loginWithGoogleIdTokenService,
   logout as logoutService,
   registerWithEmail as registerWithEmailService,
   sendPasswordReset as sendPasswordResetService,
@@ -54,6 +64,7 @@ type FirestoreUserData = {
   suspensionReason?: string;
   messagingDisabled?: boolean;
   mentorMatchingDisabled?: boolean;
+  ageVerifiedAt?: FieldValue;
 };
 
 const userDocRef = (userId: string) => doc(db, 'users', userId);
@@ -113,6 +124,7 @@ const fetchUserProfile = async (firebaseUser: FirebaseUser): Promise<User> => {
       name: firebaseUser.displayName ?? '',
       email: firebaseUser.email ?? '',
       role: null,
+      ageVerifiedAt: serverTimestamp(),
     };
     await setDoc(ref, defaultData, { merge: true });
     return buildUserFromData(firebaseUser.uid, defaultData, firebaseUser);
@@ -148,6 +160,8 @@ export const login = async (data: LoginData): Promise<User> => {
   try {
     const credential = await loginWithEmailService(data.email, data.password);
     currentUser = await fetchUserProfile(credential.user);
+    // If user previously tried Google sign-in with this email, merge the accounts now
+    await linkPendingGoogleCredential();
     return currentUser;
   } catch (error: any) {
     if (error?.code === 'auth/multi-factor-auth-required') {
@@ -172,24 +186,52 @@ export const loginWithGoogleAccount = async (): Promise<User> => {
   }
 };
 
-export const signUp = async (data: SignUpData): Promise<User> => {
-  const credential = await registerWithEmailService(data.email, data.password);
-
-  if (data.name) {
-    try {
-      await updateProfile(credential.user, { displayName: data.name });
-    } catch (error) {
-      console.warn('Failed to set display name', error);
+export const loginWithGoogleNative = async (idToken: string): Promise<User> => {
+  try {
+    const credential = await loginWithGoogleIdTokenService(idToken);
+    currentUser = await fetchUserProfile(credential.user);
+    return currentUser;
+  } catch (error: any) {
+    if (error?.code === 'auth/multi-factor-auth-required') {
+      const resolver = getMultiFactorResolver(auth, error);
+      throw { code: 'auth/multi-factor-auth-required', resolver };
     }
+    throw error;
+  }
+};
+
+export const signUp = async (data: SignUpData): Promise<User> => {
+  const safeName = sanitizeText(data.name, MAX_LENGTHS.name);
+  const safeEmail = sanitizeEmail(data.email);
+  if (!safeEmail) {
+    throw new Error('Please enter a valid email address.');
+  }
+  if (!safeName) {
+    throw new Error('Please enter your name.');
+  }
+  if (typeof data.password !== 'string' || data.password.length === 0) {
+    throw new Error('Please enter a password.');
+  }
+  if (data.password.length > MAX_LENGTHS.password) {
+    throw new Error(`Password must be ${MAX_LENGTHS.password} characters or fewer.`);
+  }
+
+  const credential = await registerWithEmailService(safeEmail, data.password);
+
+  try {
+    await updateProfile(credential.user, { displayName: safeName });
+  } catch (error) {
+    console.warn('Failed to set display name', error);
   }
 
   const newUserData: FirestoreUserData = {
-    name: data.name,
-    email: data.email,
+    name: safeName,
+    email: safeEmail,
     role: null,
     onboardingCompleted: false,
     pendingRole: null,
     mentorApplicationStatus: 'not_requested',
+    ageVerifiedAt: serverTimestamp(),
   };
 
   try {
@@ -224,49 +266,23 @@ export const sendPasswordReset = async (email: string): Promise<void> => {
 
 export const getCurrentUser = (): User | null => currentUser;
 
-let recaptchaVerifier: RecaptchaVerifier | null = null;
-
-export const getOrCreateRecaptchaVerifier = (): RecaptchaVerifier => {
-  if (!recaptchaVerifier) {
-    recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      size: 'invisible',
-    });
-  }
-  return recaptchaVerifier;
-};
-
-export const sendMfaSmsCode = async (
-  resolver: MultiFactorResolver
-): Promise<string> => {
-  const phoneInfoOptions = {
-    multiFactorHint: resolver.hints[0],
-    session: resolver.session,
-  };
-
-  const phoneAuthProvider = new PhoneAuthProvider(auth);
-  const verifier = getOrCreateRecaptchaVerifier();
-  
-  const verificationId = await phoneAuthProvider.verifyPhoneNumber(
-    phoneInfoOptions,
-    verifier
-  );
-  
-  return verificationId;
-};
-
 export const completeMfaSignIn = async (
   resolver: MultiFactorResolver,
-  verificationId: string,
-  code: string
+  code: string,
 ): Promise<void> => {
-  const credential = PhoneAuthProvider.credential(verificationId, code);
-  const assertion = PhoneMultiFactorGenerator.assertion(credential);
-  
+  const enrollmentId = resolver.hints[0]?.uid;
+  if (!enrollmentId) throw new Error('No MFA enrollment found.');
+  const assertion = TotpMultiFactorGenerator.assertionForSignIn(enrollmentId, code);
   const userCredential = await resolver.resolveSignIn(assertion);
   currentUser = await fetchUserProfile(userCredential.user);
 };
 
 export const updateUserRole = async (userId: string, role: UserRole): Promise<void> => {
+  const callerUid = auth.currentUser?.uid;
+  if (!callerUid || callerUid !== userId) {
+    throw new Error('Unauthorized: you may only update your own role.');
+  }
+
   const updates: FirestoreUserData = {
     role,
     pendingRole: null,
@@ -291,15 +307,96 @@ export const updateUserRole = async (userId: string, role: UserRole): Promise<vo
   }
 };
 
+const sanitizeStudentProfile = (profile: User['studentProfile']): User['studentProfile'] => {
+  if (!profile) return profile;
+  return {
+    ...profile,
+    fullName: sanitizeText(profile.fullName ?? '', MAX_LENGTHS.name),
+    locationCity: sanitizeText(profile.locationCity ?? '', MAX_LENGTHS.city),
+    locationState: sanitizeText(profile.locationState ?? '', MAX_LENGTHS.state),
+    timezone: sanitizeOptional(profile.timezone, MAX_LENGTHS.shortLine),
+    supportGoalsOther: sanitizeOptional(profile.supportGoalsOther, MAX_LENGTHS.bio, true),
+    preferredCommunicationNotes: sanitizeOptional(
+      profile.preferredCommunicationNotes,
+      MAX_LENGTHS.bio,
+      true,
+    ),
+    strengthsText: sanitizeOptional(profile.strengthsText, MAX_LENGTHS.bio, true),
+    challengesText: sanitizeOptional(profile.challengesText, MAX_LENGTHS.bio, true),
+  };
+};
+
+const sanitizeMentorProfile = (profile: User['mentorProfile']): User['mentorProfile'] => {
+  if (!profile) return profile;
+  return {
+    ...profile,
+    fullName: sanitizeText(profile.fullName ?? '', MAX_LENGTHS.name),
+    locationCity: sanitizeText(profile.locationCity ?? '', MAX_LENGTHS.city),
+    locationState: sanitizeText(profile.locationState ?? '', MAX_LENGTHS.state),
+    timezone: sanitizeOptional(profile.timezone, MAX_LENGTHS.shortLine),
+    currentRole: sanitizeText(profile.currentRole ?? '', MAX_LENGTHS.role),
+    expertiseAreas: sanitizeTagList(profile.expertiseAreas, 25, MAX_LENGTHS.shortLine),
+    shortBio: sanitizeOptional(profile.shortBio, MAX_LENGTHS.bio, true),
+    funFact: sanitizeOptional(profile.funFact, MAX_LENGTHS.shortLine),
+  };
+};
+
+export const getMfaEnrolledFactors = (): { uid: string; displayName: string | null }[] => {
+  const user = auth.currentUser;
+  if (!user) return [];
+  return multiFactor(user).enrolledFactors.map(f => ({ uid: f.uid, displayName: f.displayName ?? null }));
+};
+
+export const startMfaEnrollment = async (): Promise<{ secret: TotpSecret; qrCodeUrl: string }> => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Must be signed in to enroll two-factor authentication.');
+
+  const session = await multiFactor(user).getSession();
+  const secret = await TotpMultiFactorGenerator.generateSecret(session);
+  const qrCodeUrl = secret.generateQrCodeUrl(user.email ?? user.uid, 'Misfits');
+  return { secret, qrCodeUrl };
+};
+
+export const completeMfaEnrollment = async (
+  secret: TotpSecret,
+  code: string,
+  displayName = 'Authenticator',
+): Promise<void> => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Must be signed in to enroll two-factor authentication.');
+
+  const assertion = TotpMultiFactorGenerator.assertionForEnrollment(secret, code);
+  await multiFactor(user).enroll(assertion, displayName);
+};
+
+export const unenrollMfa = async (): Promise<void> => {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Must be signed in to remove two-factor authentication.');
+
+  const factors = multiFactor(user).enrolledFactors;
+  if (factors.length === 0) throw new Error('No two-factor authentication method is enrolled.');
+  await multiFactor(user).unenroll(factors[0]);
+};
+
 export const updateUserProfile = async (
   userId: string,
   updates: Partial<User>,
 ): Promise<User> => {
+  const callerUid = auth.currentUser?.uid;
+  if (!callerUid || callerUid !== userId) {
+    throw new Error('Unauthorized: you may only update your own profile.');
+  }
+
   try {
     const allowedUpdates: FirestoreUserData = {};
 
-    if (typeof updates.name === 'string') allowedUpdates.name = updates.name;
-    if (typeof updates.email === 'string') allowedUpdates.email = updates.email;
+    if (typeof updates.name === 'string') {
+      allowedUpdates.name = sanitizeText(updates.name, MAX_LENGTHS.name);
+    }
+    if (typeof updates.email === 'string') {
+      const safeEmail = sanitizeEmail(updates.email);
+      if (safeEmail) allowedUpdates.email = safeEmail;
+    }
     if (typeof updates.role === 'string' || updates.role === null) {
       allowedUpdates.role = updates.role as UserRole | null;
     }
@@ -322,43 +419,44 @@ export const updateUserProfile = async (
       allowedUpdates.mentorApplicationSubmittedAt = updates.mentorApplicationSubmittedAt;
     }
     if (typeof updates.mentorApplicationAdminNotes === 'string') {
-      allowedUpdates.mentorApplicationAdminNotes = updates.mentorApplicationAdminNotes;
+      allowedUpdates.mentorApplicationAdminNotes = sanitizeMultiline(
+        updates.mentorApplicationAdminNotes,
+        MAX_LENGTHS.notes,
+      );
     }
     if (typeof updates.mentorApplicationAppealText === 'string') {
-      allowedUpdates.mentorApplicationAppealText = updates.mentorApplicationAppealText;
+      allowedUpdates.mentorApplicationAppealText = sanitizeMultiline(
+        updates.mentorApplicationAppealText,
+        MAX_LENGTHS.notes,
+      );
     }
     if (typeof updates.mentorApplicationAppealSubmittedAt === 'string') {
       allowedUpdates.mentorApplicationAppealSubmittedAt = updates.mentorApplicationAppealSubmittedAt;
     }
-    if (Array.isArray(updates.interests)) allowedUpdates.interests = updates.interests;
+    if (Array.isArray(updates.interests)) {
+      allowedUpdates.interests = sanitizeTagList(updates.interests, 50, MAX_LENGTHS.shortLine);
+    }
     if (Array.isArray(updates.learningDifferences)) {
-      allowedUpdates.learningDifferences = updates.learningDifferences;
+      allowedUpdates.learningDifferences = sanitizeTagList(
+        updates.learningDifferences,
+        50,
+        MAX_LENGTHS.shortLine,
+      );
     }
     if (typeof updates.onboardingCompleted === 'boolean') {
       allowedUpdates.onboardingCompleted = updates.onboardingCompleted;
     }
     if (updates.studentProfile) {
-      allowedUpdates.studentProfile = updates.studentProfile;
+      allowedUpdates.studentProfile = sanitizeStudentProfile(updates.studentProfile);
     }
     if (updates.mentorProfile) {
-      allowedUpdates.mentorProfile = updates.mentorProfile;
+      allowedUpdates.mentorProfile = sanitizeMentorProfile(updates.mentorProfile);
     }
-    if (typeof updates.accountSuspended === 'boolean') {
-      allowedUpdates.accountSuspended = updates.accountSuspended;
-    }
-    if (typeof updates.suspensionReason === 'string') {
-      allowedUpdates.suspensionReason = updates.suspensionReason;
-    }
-    if (typeof updates.messagingDisabled === 'boolean') {
-      allowedUpdates.messagingDisabled = updates.messagingDisabled;
-    }
-    if (typeof updates.mentorMatchingDisabled === 'boolean') {
-      allowedUpdates.mentorMatchingDisabled = updates.mentorMatchingDisabled;
-    }
+    // accountSuspended, suspensionReason, messagingDisabled, mentorMatchingDisabled
+    // are admin-only fields. Users cannot set them through this function.
+    // Changes to those fields go through the admin service (admin SDK only).
 
     const cleanedUpdates = removeUndefinedFields(allowedUpdates);
-
-    console.log('Updating user profile:', { userId, cleanedUpdates });
 
     if (cleanedUpdates && Object.keys(cleanedUpdates).length > 0) {
       await setDoc(userDocRef(userId), cleanedUpdates, { merge: true });
