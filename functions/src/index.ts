@@ -8,3 +8,4 @@ export * from './backupCodes';
 export * from './sessionManagement';
 export * from './messaging';
 export * from './userData';
+export * from './appleNotifications';

@@ -38,6 +38,7 @@ module.exports = {
           "OpenSans-Regular.ttf",
           "OpenSans-SemiBold.ttf"
         ],
+        ITSAppUsesNonExemptEncryption: false,
         UIRequiredDeviceCapabilities: [
           "armv7"
         ],

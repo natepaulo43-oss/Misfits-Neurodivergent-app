@@ -25,7 +25,7 @@ export default function LoginScreen() {
   const googlePendingRef = useRef(false);
 
   const handleNativeGoogleSuccess = () => {
-    const isReviewerAccount = __DEV__ && auth.currentUser?.email === 'REDACTED';
+    const isReviewerAccount = auth.currentUser?.email === 'REDACTED';
     if (auth.currentUser && !auth.currentUser.emailVerified && !isReviewerAccount) {
       router.replace('/(auth)/verify-email');
       return;
@@ -61,7 +61,7 @@ export default function LoginScreen() {
     try {
       await login(email, password);
 
-      const isReviewerAccount = __DEV__ && auth.currentUser?.email === 'REDACTED';
+      const isReviewerAccount = auth.currentUser?.email === 'REDACTED';
       if (auth.currentUser && !auth.currentUser.emailVerified && !isReviewerAccount) {
         router.replace('/(auth)/verify-email');
         return;
@@ -94,7 +94,7 @@ export default function LoginScreen() {
     try {
       await loginWithGoogle();
 
-      const isReviewerAccount = __DEV__ && auth.currentUser?.email === 'REDACTED';
+      const isReviewerAccount = auth.currentUser?.email === 'REDACTED';
       if (auth.currentUser && !auth.currentUser.emailVerified && !isReviewerAccount) {
         router.replace('/(auth)/verify-email');
         return;

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -15,8 +16,11 @@ export function useGoogleSignIn(
   const [loading, setLoading] = useState(false);
   const handledRef = useRef(false);
 
+  // On web, loginWithGoogle() (Firebase signInWithPopup) is used instead of this hook.
+  // A webClientId is still required to satisfy the expo-auth-session invariant on web.
   const [request, response, promptAsync] = Google.useAuthRequest({
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? (Platform.OS === 'web' ? '__web_unused__' : undefined),
   });
 
   useEffect(() => {

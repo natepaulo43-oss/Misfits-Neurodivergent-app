@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const unsubscribe = authApi.subscribeToAuthChanges(authUser => {
       setUser(authUser);
-      const isReviewer = __DEV__ && auth.currentUser?.email === 'REDACTED';
+      const isReviewer = auth.currentUser?.email === 'REDACTED';
       setEmailVerified(isReviewer || auth.currentUser?.emailVerified || false);
       setIsLoading(false);
     });
