@@ -1,4 +1,4 @@
-# Misfits - Phase 1 MVP
+# The Misfits Project - Phase 1 MVP
 
 A mobile app connecting neurodiverse students with mentors and curated books.
 

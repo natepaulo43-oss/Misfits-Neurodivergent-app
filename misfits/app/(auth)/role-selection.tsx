@@ -37,7 +37,7 @@ export default function RoleSelectionScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Choose Your Role</Text>
           <Text style={styles.subtitle}>
-            Select how you'd like to use Misfits
+            Select how you'd like to use The Misfits Project
           </Text>
         </View>
 

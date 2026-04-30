@@ -82,7 +82,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
           <Pressable style={styles.logo} onPress={() => handleNavPress('/(admin)')}>
             <View style={styles.logoMark} />
             <View>
-              <Text style={styles.logoTitle}>Misfits</Text>
+              <Text style={styles.logoTitle}>The Misfits Project</Text>
               <Text style={styles.logoSubtitle}>Admin Portal</Text>
             </View>
           </Pressable>

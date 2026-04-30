@@ -110,7 +110,7 @@ export const MFAEnrollment: React.FC<MFAEnrollmentProps> = ({ onSuccess, onCance
         <Text style={styles.orDivider}>— or enter this key manually —</Text>
 
         <View style={styles.secretBox}>
-          <Text style={styles.secretLabel}>Account: Misfits</Text>
+          <Text style={styles.secretLabel}>Account: The Misfits Project</Text>
           <Text style={styles.secretKey} selectable>{secretKey}</Text>
           <Text style={styles.secretHint}>Type: Time-based (TOTP)</Text>
         </View>

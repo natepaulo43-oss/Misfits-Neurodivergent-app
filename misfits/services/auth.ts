@@ -353,7 +353,7 @@ export const startMfaEnrollment = async (): Promise<{ secret: TotpSecret; qrCode
 
   const session = await multiFactor(user).getSession();
   const secret = await TotpMultiFactorGenerator.generateSecret(session);
-  const qrCodeUrl = secret.generateQrCodeUrl(user.email ?? user.uid, 'Misfits');
+  const qrCodeUrl = secret.generateQrCodeUrl(user.email ?? user.uid, 'The Misfits Project');
   return { secret, qrCodeUrl };
 };
 

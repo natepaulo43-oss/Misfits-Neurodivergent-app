@@ -16,7 +16,7 @@ describe('validateBirthYear – age gate', () => {
     const result = validateBirthYear(under13Year, REFERENCE_YEAR);
     expect(result.valid).toBe(false);
     expect((result as { valid: false; error: string }).error).toBe(
-      'Misfits requires users to be 13 or older to create an account.',
+      'The Misfits Project requires users to be 13 or older to create an account.',
     );
   });
 

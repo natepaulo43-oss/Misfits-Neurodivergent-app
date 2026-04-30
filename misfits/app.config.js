@@ -1,6 +1,6 @@
 module.exports = {
   expo: {
-    name: "Misfits",
+    name: "The Misfits Project",
     slug: "misfits",
     version: "1.0.0",
     orientation: "portrait",
@@ -21,11 +21,11 @@ module.exports = {
       googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? "./GoogleService-Info.plist",
       infoPlist: {
         CFBundleDevelopmentRegion: "en",
-        CFBundleDisplayName: "Misfits",
-        CFBundleExecutable: "Misfits",
+        CFBundleDisplayName: "The Misfits Project",
+        CFBundleExecutable: "TheMisfitsProject",
         CFBundleIdentifier: "com.misfits.app",
         CFBundleInfoDictionaryVersion: "6.0",
-        CFBundleName: "Misfits",
+        CFBundleName: "The Misfits Project",
         CFBundlePackageType: "APPL",
         CFBundleShortVersionString: "1.0.0",
         CFBundleSignature: "????",

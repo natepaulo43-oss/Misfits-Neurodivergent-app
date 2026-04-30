@@ -137,7 +137,7 @@ export default function LoginScreen() {
               <View style={styles.header}>
                 <Text style={styles.title}>Welcome Back</Text>
                 <Text style={styles.subtitle}>
-                  Sign in to continue your journey with Misfits.
+                  Sign in to continue your journey with The Misfits Project.
                 </Text>
               </View>
 

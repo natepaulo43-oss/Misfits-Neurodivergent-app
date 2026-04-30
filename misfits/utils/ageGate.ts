@@ -18,7 +18,7 @@ export function validateBirthYear(
   if (referenceYear - year < 13) {
     return {
       valid: false,
-      error: 'Misfits requires users to be 13 or older to create an account.',
+      error: 'The Misfits Project requires users to be 13 or older to create an account.',
     };
   }
 

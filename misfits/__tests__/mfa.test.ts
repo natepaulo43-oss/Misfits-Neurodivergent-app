@@ -104,7 +104,7 @@ describe('startMfaEnrollment', () => {
     expect(mockTotpMultiFactorGenerator.generateSecret).toHaveBeenCalledTimes(1);
     expect(mockTotpSecret.generateQrCodeUrl).toHaveBeenCalledWith(
       mockCurrentUser.email,
-      'Misfits',
+      'The Misfits Project',
     );
     expect(result.secret).toBe(mockTotpSecret);
     expect(result.qrCodeUrl).toContain('otpauth://totp/');
@@ -118,7 +118,7 @@ describe('startMfaEnrollment', () => {
 
     await startMfaEnrollment();
 
-    expect(mockTotpSecret.generateQrCodeUrl).toHaveBeenCalledWith('user-abc', 'Misfits');
+    expect(mockTotpSecret.generateQrCodeUrl).toHaveBeenCalledWith('user-abc', 'The Misfits Project');
 
     auth.currentUser = { uid: 'user-abc', email: originalEmail };
   });

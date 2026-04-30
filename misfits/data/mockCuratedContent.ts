@@ -39,7 +39,7 @@ const curatedContent: CuratedContent[] = [
     featured: false,
     status: 'published',
     audience: 'student',
-    authorName: 'Misfits Academics Team',
+    authorName: 'The Misfits Project Academics Team',
     mentorRecommendationNote: 'Mentors can reference this during accountability sessions.',
     relatedMentorIds: ['mentor-05', 'mentor-12'],
     tags: ['templates', 'focus'],
