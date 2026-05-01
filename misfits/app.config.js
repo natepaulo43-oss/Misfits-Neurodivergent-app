@@ -63,7 +63,8 @@ module.exports = {
     scheme: "misfits",
     plugins: [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-web-browser"
     ],
     extra: {
       eas: {
