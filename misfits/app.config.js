@@ -1,3 +1,27 @@
+// Public Firebase web client config and OAuth client IDs.
+// These are NOT secrets: Firebase web/iOS client config is meant to be embedded
+// in client apps (security is enforced via Firestore rules + App Check).
+// Hardcoding them as a fallback guarantees EAS production builds always have
+// the values even if a .env file is not uploaded to the build server.
+const FIREBASE_FALLBACK = {
+  apiKey: "AIzaSyAiHXOrZR4NSQP_7OJOMYERyZk14fhsScU",
+  authDomain: "misfits-fe486.firebaseapp.com",
+  projectId: "misfits-fe486",
+  storageBucket: "misfits-fe486.firebasestorage.app",
+  messagingSenderId: "845863899218",
+  appId: "1:845863899218:web:1fb1d06aedad404b44cf8b"
+};
+
+const GOOGLE_IOS_REVERSED_CLIENT_ID_FALLBACK =
+  "com.googleusercontent.apps.845863899218-rkvf4mdm6e1jts0f5dr2bq6i5tvj67cd";
+const GOOGLE_IOS_CLIENT_ID_FALLBACK =
+  "845863899218-rkvf4mdm6e1jts0f5dr2bq6i5tvj67cd.apps.googleusercontent.com";
+const MATCHING_API_URL_FALLBACK =
+  "https://examplecallablefunction-syts7okgra-uc.a.run.app";
+
+const reversedClientId =
+  process.env.EXPO_PUBLIC_GOOGLE_IOS_REVERSED_CLIENT_ID || GOOGLE_IOS_REVERSED_CLIENT_ID_FALLBACK;
+
 module.exports = {
   expo: {
     name: "The Misfits Project",
@@ -17,35 +41,34 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: "com.misfits.app",
-      buildNumber: "1",
+      buildNumber: "2",
       googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? "./GoogleService-Info.plist",
       infoPlist: {
-        CFBundleDevelopmentRegion: "en",
+        // NOTE: Do NOT manually set CFBundleExecutable / CFBundleName /
+        // CFBundleIdentifier / CFBundleVersion / CFBundleShortVersionString /
+        // CFBundlePackageType / CFBundleInfoDictionaryVersion /
+        // CFBundleSignature / CFBundleDevelopmentRegion here. Expo/EAS
+        // populates them automatically from the top-level expo config
+        // (`name`, `slug`, `version`, `ios.bundleIdentifier`,
+        // `ios.buildNumber`). Overriding CFBundleExecutable in particular
+        // breaks launch on real devices because iOS looks for a binary with
+        // that exact name inside the .ipa and the EAS-built binary is named
+        // after the slug, not "TheMisfitsProject".
         CFBundleDisplayName: "The Misfits Project",
-        CFBundleExecutable: "TheMisfitsProject",
-        CFBundleIdentifier: "com.misfits.app",
-        CFBundleInfoDictionaryVersion: "6.0",
-        CFBundleName: "The Misfits Project",
-        CFBundlePackageType: "APPL",
-        CFBundleShortVersionString: "1.0.0",
-        CFBundleSignature: "????",
-        CFBundleVersion: "1",
         LSRequiresIPhoneOS: true,
-        CFBundleURLTypes: process.env.EXPO_PUBLIC_GOOGLE_IOS_REVERSED_CLIENT_ID
-          ? [{ CFBundleURLSchemes: [process.env.EXPO_PUBLIC_GOOGLE_IOS_REVERSED_CLIENT_ID] }]
-          : [],
-        UIAppFonts: [
-          "OpenSans-Regular.ttf",
-          "OpenSans-SemiBold.ttf"
-        ],
         ITSAppUsesNonExemptEncryption: false,
-        UIRequiredDeviceCapabilities: [
-          "armv7"
+        CFBundleURLTypes: [
+          { CFBundleURLSchemes: [reversedClientId] }
         ],
         UISupportedInterfaceOrientations: [
           "UIInterfaceOrientationPortrait",
           "UIInterfaceOrientationPortraitUpsideDown"
         ]
+        // UIAppFonts intentionally omitted: the project does not ship any
+        // OpenSans .ttf files. Listing missing fonts here causes iOS to log
+        // launch-time font registration errors. Re-add ONLY when the .ttf
+        // files actually exist in `assets/fonts/` and are wired via the
+        // expo-font plugin.
       },
       icon: "./assets/icon.png",
       splash: {
@@ -71,14 +94,17 @@ module.exports = {
         projectId: "99733b36-7c92-4484-adcc-e3f58a7bf254"
       },
       firebase: {
-        apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-        authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-        projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-        storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-        appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID
+        apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || FIREBASE_FALLBACK.apiKey,
+        authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || FIREBASE_FALLBACK.authDomain,
+        projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || FIREBASE_FALLBACK.projectId,
+        storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || FIREBASE_FALLBACK.storageBucket,
+        messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || FIREBASE_FALLBACK.messagingSenderId,
+        appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || FIREBASE_FALLBACK.appId
       },
-      matchingApiUrl: process.env.EXPO_PUBLIC_MATCHING_API_URL
+      googleIosClientId:
+        process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || GOOGLE_IOS_CLIENT_ID_FALLBACK,
+      googleIosReversedClientId: reversedClientId,
+      matchingApiUrl: process.env.EXPO_PUBLIC_MATCHING_API_URL || MATCHING_API_URL_FALLBACK
     }
   }
 };

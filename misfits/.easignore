@@ -1,0 +1,20 @@
+# When .easignore exists, EAS Build uses it INSTEAD of .gitignore to decide
+# which files are uploaded to the build server.
+#
+# We re-list everything from .gitignore EXCEPT the items below, which we
+# explicitly want available at build time:
+#   - .env / .env.* (EXPO_PUBLIC_FIREBASE_* and similar)
+#   - GoogleService-Info.plist (referenced by app.config.js -> ios.googleServicesFile)
+#   - google-services.json (Android equivalent)
+
+node_modules/
+.expo/
+.expo-shared/
+dist/
+build/
+*.log
+coverage/
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

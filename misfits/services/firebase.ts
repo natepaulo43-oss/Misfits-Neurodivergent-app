@@ -5,29 +5,46 @@ import { initializeAppCheck, ReCaptchaEnterpriseProvider, AppCheck } from 'fireb
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-const firebaseConfig = Constants.expoConfig?.extra?.firebase || {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+// Resolve Firebase config from (in priority order):
+//   1. Constants.expoConfig.extra.firebase (set by app.config.js, includes
+//      hardcoded public-key fallbacks so production always has values)
+//   2. process.env.EXPO_PUBLIC_FIREBASE_* (local dev / web bundles)
+const expoExtraFirebase = (Constants.expoConfig?.extra?.firebase ?? {}) as Partial<{
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
+}>;
+
+const firebaseConfig = {
+  apiKey: expoExtraFirebase.apiKey || process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: expoExtraFirebase.authDomain || process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: expoExtraFirebase.projectId || process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: expoExtraFirebase.storageBucket || process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: expoExtraFirebase.messagingSenderId || process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: expoExtraFirebase.appId || process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-  console.error('Firebase config:', {
+  // IMPORTANT: do NOT throw here. A throw on launch surfaces the global
+  // ErrorBoundary "Oops!" screen, which Apple flags under Guideline 2.1(a)
+  // ("the app displayed an error message upon launch"). We log loudly for
+  // diagnostics and let downstream API calls fail with their own, more
+  // contextual errors (e.g. on the login screen).
+  console.error('[firebase] Missing required Firebase configuration', {
     apiKey: firebaseConfig.apiKey ? 'SET' : 'MISSING',
     authDomain: firebaseConfig.authDomain ? 'SET' : 'MISSING',
     projectId: firebaseConfig.projectId ? 'SET' : 'MISSING',
     storageBucket: firebaseConfig.storageBucket ? 'SET' : 'MISSING',
     messagingSenderId: firebaseConfig.messagingSenderId ? 'SET' : 'MISSING',
     appId: firebaseConfig.appId ? 'SET' : 'MISSING',
+    expoExtraKeys: Constants.expoConfig?.extra ? Object.keys(Constants.expoConfig.extra) : 'none',
   });
-  console.error('Constants.expoConfig?.extra keys:', Constants.expoConfig?.extra ? Object.keys(Constants.expoConfig.extra) : 'none');
-  throw new Error('Missing required Firebase configuration. Check Vercel environment variables.');
 }
 
-const app: FirebaseApp = initializeApp(firebaseConfig);
+const app: FirebaseApp = initializeApp(firebaseConfig as Record<string, string>);
 
 const isDebugAppCheck = process.env.EXPO_PUBLIC_FIREBASE_APP_CHECK_DEBUG_TOKEN === 'true';
 

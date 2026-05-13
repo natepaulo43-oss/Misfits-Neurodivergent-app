@@ -1,0 +1,18 @@
+{
+  "keys": [
+    "CFBundleDisplayName",
+    "LSRequiresIPhoneOS",
+    "ITSAppUsesNonExemptEncryption",
+    "CFBundleURLTypes",
+    "UISupportedInterfaceOrientations"
+  ],
+  "CFBundleURLTypes": [
+    {
+      "CFBundleURLSchemes": [
+        "com.googleusercontent.apps.845863899218-rkvf4mdm6e1jts0f5dr2bq6i5tvj67cd"
+      ]
+    }
+  ],
+  "fbProjectId": "misfits-fe486",
+  "iosBuildNumber": "2"
+}
