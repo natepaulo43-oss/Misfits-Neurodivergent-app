@@ -360,10 +360,15 @@ service cloud.firestore {
       allow delete: if isSignedIn() &&
         request.auth.uid == resource.data.fromUserId;
 
-      // Both parties can read a block document (to know they're blocked)
-      allow read: if isSignedIn() &&
-        (request.auth.uid == resource.data.fromUserId ||
-         request.auth.uid == resource.data.toUserId);
+      // Both parties can read a block document (to know they're blocked).
+      // resource is null when the document doesn't exist; allow that case so
+      // getDoc returns an empty snapshot instead of permission-denied, which
+      // is what isEitherBlocked() relies on to confirm no block exists.
+      allow read: if isSignedIn() && (
+        resource == null ||
+        request.auth.uid == resource.data.fromUserId ||
+        request.auth.uid == resource.data.toUserId
+      );
 
       allow read, write: if isAdmin();
 

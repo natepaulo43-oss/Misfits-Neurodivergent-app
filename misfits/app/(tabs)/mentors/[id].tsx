@@ -69,7 +69,6 @@ export default function MentorDetailScreen() {
 
     setMessaging(true);
     try {
-      // TODO: Check if thread already exists before creating new one
       const thread = await startNewThread(
         user.id,
         user.name,
@@ -79,7 +78,8 @@ export default function MentorDetailScreen() {
       );
       router.push(`/(tabs)/messages/${thread.id}`);
     } catch (error) {
-      Alert.alert('Error', 'Failed to start conversation');
+      console.error('[MentorDetail] handleMessageMentor failed:', error);
+      Alert.alert('Something went wrong', 'Unable to start the conversation. Please try again.');
     } finally {
       setMessaging(false);
     }

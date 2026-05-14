@@ -14,7 +14,7 @@ import {
   DocumentSnapshot,
 } from 'firebase/firestore';
 
-import { db } from './firebase';
+import { auth, db } from './firebase';
 import { getCurrentUser } from './auth';
 import { Message, MessageReport, MessageThread, ThreadParticipantProfile } from '../types';
 import { isEitherBlocked } from './block';
@@ -53,16 +53,18 @@ const mapThreadDoc = (docSnapshot: DocumentSnapshot<ThreadDocument>): MessageThr
 };
 
 const ensureMessagingAllowed = (actingUserId: string) => {
-  const currentUser = getCurrentUser();
-  if (!currentUser || currentUser.id !== actingUserId) {
+  // Use auth.currentUser for the identity check — it is populated directly from
+  // the iOS Keychain / Android Keystore on app restore before the async Firestore
+  // profile fetch completes, so it is always up-to-date regardless of timing.
+  if (!auth.currentUser || auth.currentUser.uid !== actingUserId) {
     throw new Error('You must be signed in to send messages.');
   }
 
-  if (currentUser.accountSuspended) {
+  const currentUser = getCurrentUser();
+  if (currentUser?.accountSuspended) {
     throw new Error('Your account is suspended. Messaging is unavailable.');
   }
-
-  if (currentUser.messagingDisabled) {
+  if (currentUser?.messagingDisabled) {
     throw new Error('Messaging has been disabled for your account.');
   }
 };
@@ -228,11 +230,11 @@ export const startNewThread = async (
     return mapThreadDoc(snapshot.docs[0]);
   };
 
-  if (await isEitherBlocked(currentUserId, otherUserId)) {
-    throw new Error('Cannot start a conversation with this user.');
-  }
-
   try {
+    if (await isEitherBlocked(currentUserId, otherUserId)) {
+      throw new Error('Cannot start a conversation with this user.');
+    }
+
     const existingThread = await findExistingThread();
 
     if (existingThread) {
