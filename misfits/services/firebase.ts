@@ -3,7 +3,7 @@ import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider, AppCheck } from 'firebase/app-check';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
 
 // Resolve Firebase config from (in priority order):
 //   1. Constants.expoConfig.extra.firebase (set by app.config.js, includes
@@ -54,58 +54,34 @@ if (typeof window !== 'undefined' && isDebugAppCheck) {
 
 let webAppCheckInstance: AppCheck | null = null;
 
-let nativeAppCheckInitialized = false;
-
-const initializeNativeAppCheck = async () => {
-  if (nativeAppCheckInitialized) {
-    return;
+// True only when the react-native-firebase App Check native module is linked in this build.
+const isNativeAppCheckAvailable = (): boolean => {
+  try {
+    return !!(NativeModules.RNFBAppCheckModule);
+  } catch {
+    return false;
   }
-
-  if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
-    console.warn('Native App Check skipped: not on iOS or Android');
-    return;
-  }
-
-  console.warn('⚠️ Native App Check skipped: Requires development build with native modules.');
-  console.warn('   For production: Run `npx expo run:ios` or `npx expo run:android`');
-  nativeAppCheckInitialized = true;
 };
 
-const initializeAppCheckForPlatform = (): AppCheck | null => {
-  if (webAppCheckInstance) {
-    return webAppCheckInstance;
-  }
+const initializeAppCheckForPlatform = (): void => {
+  if (webAppCheckInstance) return;
 
   try {
     if (Platform.OS === 'web') {
       const siteKey = process.env.EXPO_PUBLIC_RECAPTCHA_SITE_KEY;
-
-      if (!siteKey) {
-        console.warn(
-          '⚠️ Missing EXPO_PUBLIC_RECAPTCHA_SITE_KEY. App Check cannot be initialized for web without a reCAPTCHA Enterprise site key.',
-        );
-        return null;
-      }
-
+      if (!siteKey) return;
       webAppCheckInstance = initializeAppCheck(app, {
         provider: new ReCaptchaEnterpriseProvider(siteKey),
         isTokenAutoRefreshEnabled: true,
       });
-      console.log('✅ App Check initialized for web via reCAPTCHA Enterprise');
-      return webAppCheckInstance;
+      return;
     }
 
-    if (Platform.OS === 'ios' || Platform.OS === 'android') {
-      console.log(`Initializing native App Check for ${Platform.OS}`);
-      void initializeNativeAppCheck();
-      return null;
+    if ((Platform.OS === 'ios' || Platform.OS === 'android') && isNativeAppCheckAvailable()) {
+      // Native provider initialization goes here once RNFBAppCheckModule is linked.
     }
-
-    console.warn('App Check initialization skipped: unsupported platform', Platform.OS);
-    return null;
-  } catch (error) {
-    console.error('Failed to initialize App Check:', error);
-    return null;
+  } catch {
+    // App Check is best-effort; the app runs fully without it.
   }
 };
 

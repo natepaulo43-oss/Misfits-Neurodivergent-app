@@ -52,9 +52,14 @@ export class ErrorBoundary extends Component<Props, State> {
             <Text style={styles.message}>
               Something went wrong. We've logged the error and will fix it soon.
             </Text>
-            {__DEV__ && this.state.error && (
+            {this.state.error && (
               <View style={styles.errorDetails}>
                 <Text style={styles.errorText}>{this.state.error.toString()}</Text>
+                {!!this.state.error.stack && (
+                  <Text style={[styles.errorText, styles.errorStack]}>
+                    {this.state.error.stack}
+                  </Text>
+                )}
               </View>
             )}
             <Button
@@ -111,6 +116,11 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.error,
     fontFamily: 'monospace',
+  },
+  errorStack: {
+    marginTop: spacing.sm,
+    opacity: 0.7,
+    fontSize: 11,
   },
   button: {
     marginTop: spacing.lg,
