@@ -1,9 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  StyleSheet,
   KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
   Platform,
   TouchableOpacity,
 } from 'react-native';
@@ -73,10 +75,12 @@ export default function SignupScreen() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboard}
       >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.keyboard}>
         <Card style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.title}>Create Account</Text>
@@ -169,6 +173,8 @@ export default function SignupScreen() {
             </View>
           </View>
         </Card>
+        </View>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </Screen>
   );

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import {
+  View,
+  Text,
+  StyleSheet,
   KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
   Platform,
   TouchableOpacity,
 } from 'react-native';
@@ -44,10 +46,12 @@ export default function ForgotPasswordScreen() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboard}
       >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.keyboard}>
         <Card style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.title}>Reset Password</Text>
@@ -103,6 +107,8 @@ export default function ForgotPasswordScreen() {
             </View>
           )}
         </Card>
+        </View>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </Screen>
   );
