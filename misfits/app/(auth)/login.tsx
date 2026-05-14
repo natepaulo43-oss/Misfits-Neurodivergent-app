@@ -8,11 +8,13 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Input, Screen, Card, MFAChallenge } from '../../components';
 import { colors, spacing, typography } from '../../constants/theme';
 import { auth } from '../../services/firebase';
 import { useGoogleSignIn } from '../../hooks/useGoogleSignIn';
+import { useAppleSignIn } from '../../hooks/useAppleSignIn';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -20,6 +22,7 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
   const { login, loginWithGoogle, mfaRequired, pendingLinkEmail } = useAuth();
   const loginPendingRef = useRef(false);
   const googlePendingRef = useRef(false);
@@ -37,6 +40,17 @@ export default function LoginScreen() {
     handleNativeGoogleSuccess,
     (errMsg) => setError(errMsg),
   );
+
+  const { signIn: appleSignIn, loading: appleLoading } = useAppleSignIn(
+    () => router.replace('/'),
+    (errMsg) => setError(errMsg),
+  );
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     if (pendingLinkEmail) {
@@ -210,6 +224,16 @@ export default function LoginScreen() {
                       variant="outline"
                       style={styles.googleButton}
                     />
+
+                    {appleAvailable && (
+                      <AppleAuthentication.AppleAuthenticationButton
+                        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                        cornerRadius={8}
+                        style={[styles.appleButton, appleLoading && styles.appleButtonDisabled]}
+                        onPress={() => { if (!appleLoading) appleSignIn(); }}
+                      />
+                    )}
                   </>
                 )}
 
@@ -317,6 +341,14 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     marginBottom: spacing.sm,
+  },
+  appleButton: {
+    width: '100%',
+    height: 48,
+    marginBottom: spacing.sm,
+  },
+  appleButtonDisabled: {
+    opacity: 0.5,
   },
   linkNotice: {
     backgroundColor: colors.surface,

@@ -1,6 +1,7 @@
 import { FirebaseError } from 'firebase/app';
 import {
   GoogleAuthProvider,
+  OAuthProvider,
   OAuthCredential,
   UserCredential,
   createUserWithEmailAndPassword,
@@ -156,6 +157,23 @@ export const loginWithGoogleIdToken = async (idToken: string): Promise<UserCrede
     ) {
       capturePendingCredential(error);
     }
+    throw normalizeFirebaseError(error);
+  }
+};
+
+/**
+ * Native Apple Sign In: takes an Apple identity token and raw nonce,
+ * creates an OAuthCredential, and signs into Firebase.
+ */
+export const loginWithAppleIdToken = async (
+  identityToken: string,
+  rawNonce: string,
+): Promise<UserCredential> => {
+  try {
+    const provider = new OAuthProvider('apple.com');
+    const credential = provider.credential({ idToken: identityToken, rawNonce });
+    return await signInWithCredential(auth, credential);
+  } catch (error) {
     throw normalizeFirebaseError(error);
   }
 };

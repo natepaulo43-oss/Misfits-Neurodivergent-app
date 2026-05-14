@@ -19,6 +19,7 @@ interface AuthContextType {
   loginWithEmail: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithGoogleNative: (idToken: string) => Promise<void>;
+  loginWithApple: (identityToken: string, rawNonce: string, fullName?: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -113,6 +114,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
+  const loginWithApple = async (identityToken: string, rawNonce: string, fullName?: string) => {
+    await withLoading(async () => {
+      try {
+        const loggedInUser = await authApi.loginWithAppleNative(identityToken, rawNonce, fullName);
+        setPendingLinkEmail(null);
+        setUser(loggedInUser);
+      } catch (error: any) {
+        if (error?.code === 'auth/multi-factor-auth-required' && error?.resolver) {
+          setMfaResolver(error.resolver);
+          throw new Error('MFA verification required');
+        }
+        throw error;
+      }
+    });
+  };
+
   const signUp = async (name: string, email: string, password: string) => {
     await withLoading(async () => {
       const newUser = await authApi.signUp({ name, email, password });
@@ -186,6 +203,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loginWithEmail,
         loginWithGoogle,
         loginWithGoogleNative,
+        loginWithApple,
         signUp,
         sendPasswordReset,
         logout,

@@ -41,7 +41,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: "com.misfits.app",
-      buildNumber: "3",
+      buildNumber: "4",
       googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? "./GoogleService-Info.plist",
       infoPlist: {
         // NOTE: Do NOT manually set CFBundleExecutable / CFBundleName /
@@ -87,7 +87,8 @@ module.exports = {
     plugins: [
       "expo-router",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-apple-authentication"
     ],
     extra: {
       eas: {

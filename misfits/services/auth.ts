@@ -27,6 +27,7 @@ import {
   loginWithEmail as loginWithEmailService,
   loginWithGoogle as loginWithGoogleService,
   loginWithGoogleIdToken as loginWithGoogleIdTokenService,
+  loginWithAppleIdToken as loginWithAppleIdTokenService,
   logout as logoutService,
   registerWithEmail as registerWithEmailService,
   sendPasswordReset as sendPasswordResetService,
@@ -193,6 +194,37 @@ export const loginWithGoogleNative = async (idToken: string): Promise<User> => {
     return currentUser;
   } catch (error: any) {
     if (error?.code === 'auth/multi-factor-auth-required') {
+      const resolver = getMultiFactorResolver(auth, error);
+      throw { code: 'auth/multi-factor-auth-required', resolver };
+    }
+    throw error;
+  }
+};
+
+export const loginWithAppleNative = async (
+  identityToken: string,
+  rawNonce: string,
+  fullName?: string,
+): Promise<User> => {
+  try {
+    const credential = await loginWithAppleIdTokenService(identityToken, rawNonce);
+    const firebaseUser = credential.user;
+
+    // Apple only provides the user's name on the very first sign-in.
+    // If Firebase didn't populate displayName yet and we have a name, set it now
+    // so fetchUserProfile can write it into Firestore for new users.
+    if (fullName && !firebaseUser.displayName) {
+      try {
+        await updateProfile(firebaseUser, { displayName: fullName });
+      } catch {
+        // Non-fatal — profile will just lack a display name
+      }
+    }
+
+    currentUser = await fetchUserProfile(firebaseUser);
+    return currentUser;
+  } catch (error: any) {
+    if (error?.code === 'auth/multi-factor-auth-required' && error?.resolver) {
       const resolver = getMultiFactorResolver(auth, error);
       throw { code: 'auth/multi-factor-auth-required', resolver };
     }
