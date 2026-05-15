@@ -78,8 +78,9 @@ export default function MentorDetailScreen() {
       );
       router.push(`/(tabs)/messages/${thread.id}`);
     } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
       console.error('[MentorDetail] handleMessageMentor failed:', error);
-      Alert.alert('Something went wrong', 'Unable to start the conversation. Please try again.');
+      Alert.alert('Something went wrong', `Unable to start the conversation. Please try again.\n\n${detail}`);
     } finally {
       setMessaging(false);
     }

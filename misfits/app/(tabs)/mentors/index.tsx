@@ -212,7 +212,9 @@ export default function MentorMatchesScreen() {
       );
       Alert.alert('Request sent', 'We let the mentor know you’d like an introduction.');
     } catch (err) {
-      Alert.alert('Something went wrong', 'Unable to send your introduction request. Please retry.');
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error('[RequestIntro] startNewThread failed:', err);
+      Alert.alert('Something went wrong', `Unable to send your introduction request. Please retry.\n\n${detail}`);
     } finally {
       setRequestingIntroId(null);
     }

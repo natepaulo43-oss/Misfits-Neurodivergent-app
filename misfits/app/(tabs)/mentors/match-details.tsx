@@ -77,7 +77,9 @@ export default function MatchDetailsScreen() {
       );
       Alert.alert('Request sent', 'We let the mentor know you’d like an introduction.');
     } catch (error) {
-      Alert.alert('Something went wrong', 'Unable to send your request. Please try again.');
+      const detail = error instanceof Error ? error.message : String(error);
+      console.error('[MatchDetails] handleRequestIntro failed:', error);
+      Alert.alert('Something went wrong', `Unable to send your request. Please try again.\n\n${detail}`);
     } finally {
       setRequestingIntro(false);
     }

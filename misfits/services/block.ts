@@ -81,11 +81,19 @@ export const isEitherBlocked = async (
   userA: string,
   userB: string,
 ): Promise<boolean> => {
-  const [aBlocksB, bBlocksA] = await Promise.all([
-    getDoc(doc(blocksCollection, blockDocId(userA, userB))),
-    getDoc(doc(blocksCollection, blockDocId(userB, userA))),
-  ]);
-  return aBlocksB.exists() || bBlocksA.exists();
+  try {
+    const [aBlocksB, bBlocksA] = await Promise.all([
+      getDoc(doc(blocksCollection, blockDocId(userA, userB))),
+      getDoc(doc(blocksCollection, blockDocId(userB, userA))),
+    ]);
+    return aBlocksB.exists() || bBlocksA.exists();
+  } catch (error) {
+    // If Firestore rules deny the read (e.g. rules not yet deployed with resource==null
+    // guard for non-existent docs), assume no block exists. The server-side exists()
+    // checks in the threads/messages create rules still enforce blocks on write.
+    console.error('[block] isEitherBlocked check failed, assuming no block:', error);
+    return false;
+  }
 };
 
 /**

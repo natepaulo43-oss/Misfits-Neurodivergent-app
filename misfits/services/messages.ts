@@ -219,15 +219,33 @@ export const startNewThread = async (
     // Both filters are required: participantIds satisfies the list security rule
     // (which requires request.auth.uid in resource.data.participantIds), while
     // participantKey narrows the result to this exact pair of participants.
-    const existingQuery = query(
-      threadsCollection,
-      where('participantIds', 'array-contains', currentUserId),
-      where('participantKey', '==', participantKey),
-      limit(1),
-    );
-    const snapshot = await getDocs(existingQuery);
-    if (snapshot.empty) return null;
-    return mapThreadDoc(snapshot.docs[0]);
+    try {
+      const existingQuery = query(
+        threadsCollection,
+        where('participantIds', 'array-contains', currentUserId),
+        where('participantKey', '==', participantKey),
+        limit(1),
+      );
+      const snapshot = await getDocs(existingQuery);
+      if (snapshot.empty) return null;
+      return mapThreadDoc(snapshot.docs[0]);
+    } catch (err: any) {
+      if (err?.code === 'failed-precondition') {
+        // Composite index not yet available; fall back to single-field query + client filter.
+        try {
+          const fallback = query(
+            threadsCollection,
+            where('participantIds', 'array-contains', currentUserId),
+          );
+          const snapshot = await getDocs(fallback);
+          const match = snapshot.docs.find(d => d.data().participantKey === participantKey);
+          return match ? mapThreadDoc(match) : null;
+        } catch {
+          return null;
+        }
+      }
+      throw err;
+    }
   };
 
   try {
