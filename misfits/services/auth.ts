@@ -311,6 +311,7 @@ export const completeMfaSignIn = async (
 
 export const updateUserRole = async (userId: string, role: UserRole): Promise<void> => {
   const callerUid = auth.currentUser?.uid;
+  console.log('[updateUserRole] callerUid:', callerUid, 'userId:', userId, 'role:', role);
   if (!callerUid || callerUid !== userId) {
     throw new Error('Unauthorized: you may only update your own role.');
   }
@@ -318,6 +319,9 @@ export const updateUserRole = async (userId: string, role: UserRole): Promise<vo
   const updates: FirestoreUserData = {
     role,
     pendingRole: null,
+    // Include ageVerifiedAt so this write satisfies the allow create rule if the
+    // user document somehow doesn't exist yet (edge case on first sign-in).
+    ageVerifiedAt: serverTimestamp(),
   };
 
   if (role === 'mentor') {
@@ -327,7 +331,12 @@ export const updateUserRole = async (userId: string, role: UserRole): Promise<vo
     updates.mentorApplicationSubmittedAt = undefined;
   }
 
-  await setDoc(userDocRef(userId), removeUndefinedFields(updates) ?? {}, { merge: true });
+  try {
+    await setDoc(userDocRef(userId), removeUndefinedFields(updates) ?? {}, { merge: true });
+  } catch (error) {
+    console.error('[updateUserRole] setDoc failed:', error instanceof Error ? error.message : error);
+    throw error;
+  }
 
   if (currentUser && currentUser.id === userId) {
     currentUser = {

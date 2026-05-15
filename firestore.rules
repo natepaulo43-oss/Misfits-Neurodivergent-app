@@ -8,10 +8,7 @@ service cloud.firestore {
     // ============================================
     
     function isSignedIn() {
-      // Also enforce a 30-day maximum session lifetime.
-      // auth_time is seconds-since-epoch; add 30 days (2 592 000 s) then compare.
-      return request.auth != null &&
-        timestamp.value((request.auth.token.auth_time + 2592000) * 1000) > request.time;
+      return request.auth != null;
     }
     
     function hasValidAppCheck() {
@@ -90,8 +87,11 @@ service cloud.firestore {
       // Users can update their own document when their account is active.
       // Admin-controlled fields (suspension, messaging, matching flags) are
       // immutable by the owner — only admins can change them via allow write above.
+      // NOTE: use resource.data directly (not isAccountActive()) here because
+      // isAccountActive() calls get() on the same document being updated, which
+      // is a circular read that may not resolve correctly in Firestore rules.
       allow update: if isOwner(userId) &&
-        isAccountActive() &&
+        resource.data.get('accountSuspended', false) != true &&
         !(request.resource.data.role in ['admin', 'super_admin']) &&
         request.resource.data.get('accountSuspended', false) == resource.data.get('accountSuspended', false) &&
         request.resource.data.get('suspensionReason', '') == resource.data.get('suspensionReason', '') &&

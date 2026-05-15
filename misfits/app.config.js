@@ -41,7 +41,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: "com.misfits.app",
-      buildNumber: "5",
+      buildNumber: "6",
       googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? "./GoogleService-Info.plist",
       infoPlist: {
         // NOTE: Do NOT manually set CFBundleExecutable / CFBundleName /

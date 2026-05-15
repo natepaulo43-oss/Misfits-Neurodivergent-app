@@ -25,6 +25,7 @@ export default function RoleSelectionScreen() {
       await requestMentorAccess();
       router.replace('/(onboarding)/mentor');
     } catch (err) {
+      console.error('[RoleSelection] handleContinue failed:', err);
       Alert.alert('Something went wrong', 'We could not start your onboarding. Please try again.');
     } finally {
       setLoading(false);
