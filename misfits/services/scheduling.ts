@@ -9,7 +9,6 @@ import {
   query,
   where,
   orderBy,
-  Timestamp,
   CollectionReference,
   DocumentSnapshot,
 } from 'firebase/firestore';
@@ -46,6 +45,8 @@ export const getMentorAvailability = async (mentorId: string): Promise<MentorAva
     return {
       ...data,
       id: snapshot.id,
+      weeklyBlocks: data.weeklyBlocks ?? [],
+      exceptions: data.exceptions ?? [],
     } as MentorAvailability;
   } catch (error) {
     throw error instanceof Error ? error : new Error('Unable to load availability');
@@ -101,25 +102,10 @@ export const getAvailableSlots = async (
     if (!availability) {
       return [];
     }
-    
-    const dateStr = getDateString(selectedDate);
-    const sessionsQuery = query(
-      sessionsCollection,
-      where('mentorId', '==', mentorId),
-    );
-    const sessionsSnapshot = await getDocs(sessionsQuery);
-    
-    const allSessions = sessionsSnapshot.docs.map(docSnap => ({
-      ...docSnap.data(),
-      id: docSnap.id,
-    } as Session));
-    
-    const relevantSessions = allSessions.filter(session => {
-      const sessionDate = getDateString(new Date(session.requestedStart));
-      return sessionDate === dateStr;
-    });
-    
-    return generateTimeSlots(availability, selectedDate, durationMinutes, relevantSessions);
+    // Sessions are not queried here because a student cannot list all sessions
+    // for a mentor (Firestore rules only allow reading your own sessions).
+    // Double-booking prevention is handled by the mentor accepting/declining requests.
+    return generateTimeSlots(availability, selectedDate, durationMinutes, []);
   } catch (error) {
     throw error instanceof Error ? error : new Error('Unable to load available slots');
   }
