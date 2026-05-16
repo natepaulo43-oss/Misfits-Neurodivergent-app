@@ -38,21 +38,16 @@ export const MAX_LENGTHS = {
 } as const;
 
 /**
- * Strip anything that looks like an HTML tag (<...>) and then escape the five
- * XML-significant characters so the result is safe to render in any HTML
- * context.
+ * Remove anything that looks like an HTML/XML tag (<...>).
+ * Character escaping (&amp; &#39; etc.) is intentionally omitted: all
+ * sanitized strings are stored in Firestore and rendered by React Native
+ * <Text> components, which treat every character literally. Escaping here
+ * would cause apostrophes, ampersands, and quotes to appear as raw HTML
+ * entities in the UI. HTML-context escaping is the responsibility of any
+ * web consumer (e.g. admin dashboard) at render time, not at storage time.
  */
-const stripHtml = (input: string): string => {
-  return input
-    // Remove anything between < and > (including script/style content)
-    .replace(/<[^>]*>/g, '')
-    // Escape remaining sensitive characters
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-};
+const stripHtml = (input: string): string =>
+  input.replace(/<[^>]*>/g, '');
 
 /**
  * Remove ASCII control characters (0x00-0x1F except \t \n \r) and 0x7F.

@@ -216,9 +216,11 @@ export const startNewThread = async (
   const timestamp = new Date().toISOString();
 
   const findExistingThread = async (): Promise<MessageThread | null> => {
-    // Both filters are required: participantIds satisfies the list security rule
-    // (which requires request.auth.uid in resource.data.participantIds), while
-    // participantKey narrows the result to this exact pair of participants.
+    // Try the composite query first (fast path, needs composite index).
+    // If Firestore rejects it with failed-precondition (index building) or
+    // permission-denied (security rules can't statically verify array-contains
+    // + equality filter combination), fall back to the single-field query and
+    // filter client-side.
     try {
       const existingQuery = query(
         threadsCollection,
@@ -230,8 +232,7 @@ export const startNewThread = async (
       if (snapshot.empty) return null;
       return mapThreadDoc(snapshot.docs[0]);
     } catch (err: any) {
-      if (err?.code === 'failed-precondition') {
-        // Composite index not yet available; fall back to single-field query + client filter.
+      if (err?.code === 'failed-precondition' || err?.code === 'permission-denied') {
         try {
           const fallback = query(
             threadsCollection,
@@ -248,11 +249,14 @@ export const startNewThread = async (
     }
   };
 
+  let step = 'init';
   try {
+    step = 'blocked-check';
     if (await isEitherBlocked(currentUserId, otherUserId)) {
       throw new Error('Cannot start a conversation with this user.');
     }
 
+    step = 'find-thread';
     const existingThread = await findExistingThread();
 
     if (existingThread) {
@@ -278,9 +282,11 @@ export const startNewThread = async (
       updatedAt: timestamp,
     };
 
+    step = 'create-thread';
     const newThreadRef = await addDoc(threadsCollection, threadPayload);
     const threadId = newThreadRef.id;
 
+    step = 'create-message';
     await addDoc(collection(newThreadRef, 'messages'), {
       fromUserId: currentUserId,
       toUserId: otherUserId,
@@ -299,9 +305,10 @@ export const startNewThread = async (
       createdAt: timestamp,
       updatedAt: timestamp,
     };
-  } catch (error) {
-    console.error('[messages] Failed to start thread', error);
-    throw error instanceof Error ? error : new Error('Unable to start conversation');
+  } catch (error: any) {
+    console.error('[messages] Failed at step:', step, error?.code, error?.message);
+    const msg = error instanceof Error ? error.message : 'Unable to start conversation';
+    throw new Error(`[${step}] ${msg}`);
   }
 };
 

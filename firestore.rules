@@ -40,16 +40,21 @@ service cloud.firestore {
     
     function isAccountActive() {
       let userData = getSignedInUserData();
-      // Default to true (active) if no user doc yet or field doesn't exist
-      return userData == null || userData.accountSuspended != true;
+      // Default to true (active) if no user doc yet or field doesn't exist.
+      // Use .get('field', default) so missing fields never deny the rule.
+      return userData == null || userData.get('accountSuspended', false) != true;
     }
     
     function canMessage() {
       let userData = getSignedInUserData();
-      // Default to true (can message) if no user doc yet or fields don't exist
+      // Default to true (can message) if no user doc yet or fields don't exist.
+      // Use .get('field', default) so missing fields never deny the rule.
       return (
         userData == null ||
-        (userData.messagingDisabled != true && userData.accountSuspended != true)
+        (
+          userData.get('messagingDisabled', false) != true &&
+          userData.get('accountSuspended', false) != true
+        )
       );
     }
 
