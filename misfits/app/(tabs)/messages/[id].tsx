@@ -284,7 +284,7 @@ export default function ChatScreen() {
   };
 
   return (
-    <Screen padding="none">
+    <Screen padding="none" disableKeyboardAvoidance>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{conversationTitle}</Text>
       </View>

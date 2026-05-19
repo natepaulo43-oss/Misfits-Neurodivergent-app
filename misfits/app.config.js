@@ -39,9 +39,9 @@ module.exports = {
       "**/*"
     ],
     ios: {
-      supportsTablet: false,
+      supportsTablet: true,
       bundleIdentifier: "com.misfits.app",
-      buildNumber: "11",
+      buildNumber: "12",
       googleServicesFile: process.env.GOOGLE_SERVICES_PLIST ?? "./GoogleService-Info.plist",
       infoPlist: {
         // NOTE: Do NOT manually set CFBundleExecutable / CFBundleName /
@@ -55,12 +55,24 @@ module.exports = {
         // that exact name inside the .ipa and the EAS-built binary is named
         // after the slug, not "TheMisfitsProject".
         CFBundleDisplayName: "The Misfits Project",
-        LSRequiresIPhoneOS: true,
+        // LSRequiresIPhoneOS must be false when supportsTablet is true so
+        // the app installs and runs natively on iPad. iOS uses
+        // UIDeviceFamily (populated by Expo from supportsTablet) to decide
+        // device compatibility.
+        LSRequiresIPhoneOS: false,
         ITSAppUsesNonExemptEncryption: false,
         CFBundleURLTypes: [
           { CFBundleURLSchemes: [reversedClientId] }
         ],
+        // iPhone portrait orientations.
         UISupportedInterfaceOrientations: [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationPortraitUpsideDown"
+        ],
+        // iPad: portrait only per product decision. Apple will reject iPad
+        // submissions that allow landscape but have a UI broken in
+        // landscape, so we explicitly lock portrait on iPad here.
+        "UISupportedInterfaceOrientations~ipad": [
           "UIInterfaceOrientationPortrait",
           "UIInterfaceOrientationPortraitUpsideDown"
         ]

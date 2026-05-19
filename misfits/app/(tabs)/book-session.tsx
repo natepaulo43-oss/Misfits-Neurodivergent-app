@@ -149,7 +149,12 @@ export default function BookSessionScreen() {
 
   return (
     <Screen>
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <Text style={styles.title}>Book a Session</Text>
         <Text style={styles.subtitle}>with {mentorName}</Text>
 

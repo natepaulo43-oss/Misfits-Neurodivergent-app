@@ -138,7 +138,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen scroll centerContent>
+    <Screen scroll centerContent disableKeyboardAvoidance>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboard}
@@ -267,6 +267,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 420,
+    alignSelf: 'center',
     justifyContent: 'center',
     padding: spacing.lg,
     gap: spacing.xl,

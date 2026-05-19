@@ -235,6 +235,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 480,
+    alignSelf: 'center',
     padding: spacing.xl,
     gap: spacing.xl,
   },

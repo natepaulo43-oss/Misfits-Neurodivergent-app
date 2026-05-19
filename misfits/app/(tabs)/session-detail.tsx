@@ -8,6 +8,8 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Screen, Button } from '../../components';
@@ -263,7 +265,12 @@ export default function SessionDetailScreen() {
 
   return (
     <Screen>
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <View style={styles.statusBanner}>
           <Text style={styles.statusText}>{session.status.replace('_', ' ').toUpperCase()}</Text>
         </View>
@@ -401,7 +408,11 @@ export default function SessionDetailScreen() {
         </View>
 
         {showDeclineModal && (
-          <View style={styles.modal}>
+          <KeyboardAvoidingView
+            style={styles.modal}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            pointerEvents="box-none"
+          >
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Decline Session</Text>
               <Text style={styles.modalSubtitle}>Please select a reason:</Text>
@@ -444,11 +455,15 @@ export default function SessionDetailScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         )}
 
         {showNotesModal && (
-          <View style={styles.modal}>
+          <KeyboardAvoidingView
+            style={styles.modal}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            pointerEvents="box-none"
+          >
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>Add Session Note</Text>
               <Text style={styles.modalSubtitle}>Private - only you can see this</Text>
@@ -488,7 +503,7 @@ export default function SessionDetailScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         )}
       </ScrollView>
     </Screen>

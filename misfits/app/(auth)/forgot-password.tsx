@@ -45,7 +45,7 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <Screen>
+    <Screen disableKeyboardAvoidance>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboard}
@@ -120,6 +120,9 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
     justifyContent: 'center',
     gap: spacing.lg,
   },
