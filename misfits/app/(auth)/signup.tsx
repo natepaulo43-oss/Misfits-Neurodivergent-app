@@ -3,10 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  KeyboardAvoidingView,
-  Keyboard,
-  TouchableWithoutFeedback,
-  Platform,
   TouchableOpacity,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -74,14 +70,8 @@ export default function SignupScreen() {
   };
 
   return (
-    <Screen disableKeyboardAvoidance>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboard}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.keyboard}>
-        <Card style={styles.card}>
+    <Screen scroll centerContent keyboardShouldPersistTaps="handled">
+      <Card style={styles.card}>
           <View style={styles.header}>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>
@@ -172,24 +162,16 @@ export default function SignupScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </Card>
-        </View>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
+      </Card>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboard: {
-    flex: 1,
-  },
   card: {
-    flex: 1,
     width: '100%',
     maxWidth: 420,
     alignSelf: 'center',
-    justifyContent: 'center',
     gap: spacing.lg,
   },
   header: {

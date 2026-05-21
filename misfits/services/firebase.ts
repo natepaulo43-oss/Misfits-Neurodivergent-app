@@ -1,5 +1,18 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+// `firebase/auth` resolves to the React Native entry on iOS/Android (via the
+// `.rn.js` Metro extension), which is where `getReactNativePersistence` and
+// the RN-aware `initializeAuth` come from. Static imports keep TypeScript
+// happy on every platform — we just guard at runtime with `Platform.OS`.
+import {
+  getAuth,
+  initializeAuth,
+  // @ts-ignore — only present in the RN entry of firebase/auth, which Metro
+  // selects automatically for native bundles. The web build won't reach the
+  // code path that uses this symbol.
+  getReactNativePersistence,
+  Auth,
+} from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider, AppCheck } from 'firebase/app-check';
 import Constants from 'expo-constants';
@@ -87,7 +100,27 @@ const initializeAppCheckForPlatform = (): void => {
 
 initializeAppCheckForPlatform();
 
-const auth: Auth = getAuth(app);
+// Initialize Firebase Auth with persistence appropriate to the platform.
+//   - iOS / Android: AsyncStorage so the session survives cold starts and
+//     backgrounding (this is what was missing in TestFlight).
+//   - Web: default in-browser persistence (IndexedDB / localStorage).
+// initializeAuth() can only be called once per FirebaseApp; if it has
+// already been initialized (e.g. during Fast Refresh) we fall back to
+// getAuth() to retrieve the existing instance.
+let auth: Auth;
+if (Platform.OS === 'web') {
+  auth = getAuth(app);
+} else {
+  try {
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch (error) {
+    // Already initialized (Fast Refresh / repeat import) — reuse the
+    // existing instance, which retains the AsyncStorage persistence.
+    auth = getAuth(app);
+  }
+}
 const db: Firestore = getFirestore(app);
 
 export { auth, db, app };

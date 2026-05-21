@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
 } from 'react-native';
@@ -138,12 +137,8 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen scroll centerContent disableKeyboardAvoidance>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboard}
-      >
-        <Card style={styles.card}>
+    <Screen scroll centerContent keyboardShouldPersistTaps="handled">
+      <Card style={styles.card}>
           {mfaRequired ? (
             <MFAChallenge onSuccess={handleMfaSuccess} onCancel={handleMfaCancel} />
           ) : (
@@ -255,15 +250,11 @@ export default function LoginScreen() {
             </>
           )}
         </Card>
-      </KeyboardAvoidingView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboard: {
-    flex: 1,
-  },
   card: {
     width: '100%',
     maxWidth: 420,
