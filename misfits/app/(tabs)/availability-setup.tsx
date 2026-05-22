@@ -205,13 +205,6 @@ export default function AvailabilitySetupScreen() {
   const handleSave = async () => {
     if (!user) return;
 
-    // Debug: Log user info
-    console.log('=== SAVE ATTEMPT ===');
-    console.log('User ID:', user.id);
-    console.log('User Role:', user.role);
-    console.log('User Email:', user.email);
-    console.log('Account Suspended:', user.accountSuspended);
-
     const availability = {
       timezone,
       weeklyBlocks,

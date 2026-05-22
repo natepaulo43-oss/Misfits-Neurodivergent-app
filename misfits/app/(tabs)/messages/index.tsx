@@ -30,8 +30,6 @@ export default function MessagesListScreen() {
     try {
       // Load threads and sessions separately to handle errors independently
       const threadsData = await fetchThreads(user.id);
-      console.log('[Messages] Loaded threads:', threadsData.length, 'threads');
-      console.log('[Messages] Thread details:', threadsData);
       setThreads(threadsData);
       
       // Try to load sessions, but don't fail if index is missing
@@ -77,8 +75,7 @@ export default function MessagesListScreen() {
 
   const renderThread = ({ item }: { item: MessageThread }) => {
     const otherName = user ? getOtherParticipantName(item, user.id) : '';
-    console.log('[Messages] Rendering thread:', item.id, 'otherName:', otherName, 'lastMessage:', item.lastMessage);
-    
+
     return (
       <TouchableOpacity
         style={styles.thread}

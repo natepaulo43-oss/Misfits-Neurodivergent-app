@@ -25,6 +25,5 @@ export const purchaseBook = async (bookId: string, userId: string): Promise<bool
   
   // TODO: In production, this would create a purchase record in Firestore
   // For MVP, just return success
-  console.log(`Mock purchase: User ${userId} purchased book ${bookId}`);
   return true;
 };

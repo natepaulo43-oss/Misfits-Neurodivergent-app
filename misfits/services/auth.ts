@@ -311,7 +311,6 @@ export const completeMfaSignIn = async (
 
 export const updateUserRole = async (userId: string, role: UserRole): Promise<void> => {
   const callerUid = auth.currentUser?.uid;
-  console.log('[updateUserRole] callerUid:', callerUid, 'userId:', userId, 'role:', role);
   if (!callerUid || callerUid !== userId) {
     throw new Error('Unauthorized: you may only update your own role.');
   }

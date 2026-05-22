@@ -21,6 +21,8 @@ const getRoleLabel = (role?: string | null) =>
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [pendingPassword, setPendingPassword] = useState('');
 
   const { initiateGoogleDelete, loading: googleDeleteLoading } = useGoogleDeleteAccount(
     () => {
@@ -102,23 +104,29 @@ export default function ProfileScreen() {
       return;
     }
 
-    Alert.prompt(
-      'Confirm Password',
-      'Enter your password to delete your account:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Account',
-          style: 'destructive',
-          onPress: (password?: string) => {
-            if (password) {
-              performDeleteAccount(password);
-            }
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        'Confirm Password',
+        'Enter your password to delete your account:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete Account',
+            style: 'destructive',
+            onPress: (password?: string) => {
+              if (password) {
+                performDeleteAccount(password);
+              }
+            },
           },
-        },
-      ],
-      'secure-text'
-    );
+        ],
+        'secure-text'
+      );
+      return;
+    }
+
+    setShowPasswordPrompt(true);
+    setPendingPassword('');
   };
 
   const performDeleteAccount = async (password: string) => {
@@ -215,6 +223,42 @@ export default function ProfileScreen() {
           disabled={isDeleting || googleDeleteLoading}
           style={styles.deleteButton}
         />
+
+        {showPasswordPrompt && (
+          <View style={styles.passwordPromptCard}>
+            <Text style={styles.passwordPromptTitle}>Confirm Password</Text>
+            <Text style={styles.passwordPromptBody}>Enter your password to permanently delete your account.</Text>
+            <TextInput
+              style={styles.passwordInput}
+              secureTextEntry
+              placeholder="Password"
+              placeholderTextColor={colors.textMuted}
+              value={pendingPassword}
+              onChangeText={setPendingPassword}
+              autoFocus
+            />
+            <View style={styles.passwordPromptActions}>
+              <Button
+                title="Cancel"
+                variant="outline"
+                onPress={() => { setShowPasswordPrompt(false); setPendingPassword(''); }}
+                style={styles.passwordPromptBtn}
+              />
+              <Button
+                title="Delete Account"
+                onPress={() => {
+                  if (pendingPassword) {
+                    setShowPasswordPrompt(false);
+                    performDeleteAccount(pendingPassword);
+                    setPendingPassword('');
+                  }
+                }}
+                disabled={!pendingPassword}
+                style={{ flex: 1, borderColor: colors.error } as any}
+              />
+            </View>
+          </View>
+        )}
       </ScrollView>
     </Screen>
   );
@@ -315,6 +359,43 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     marginTop: spacing.sm,
+    borderColor: colors.error,
+  },
+  passwordPromptCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: spacing.lg,
+    gap: spacing.md,
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  passwordPromptTitle: {
+    ...typography.subtitle,
+    color: colors.textPrimary,
+  },
+  passwordPromptBody: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  passwordInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    ...typography.body,
+    color: colors.textPrimary,
+    backgroundColor: colors.background,
+  },
+  passwordPromptActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  passwordPromptBtn: {
+    flex: 1,
+  },
+  passwordPromptBtnDestructive: {
     borderColor: colors.error,
   },
 });

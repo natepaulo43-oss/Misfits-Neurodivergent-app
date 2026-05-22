@@ -111,13 +111,7 @@ export const loginWithEmail = async (
   password: string,
 ): Promise<UserCredential> => {
   try {
-    const result = await signInWithEmailAndPassword(auth, email, password);
-
-    if (__DEV__ && email === 'REDACTED') {
-      console.log('[DEV] Reviewer test account detected - bypassing email verification checks');
-    }
-
-    return result;
+    return await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
     throw normalizeFirebaseError(error);
   }

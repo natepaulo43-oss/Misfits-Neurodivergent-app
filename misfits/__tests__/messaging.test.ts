@@ -41,9 +41,22 @@ jest.mock('firebase/firestore', () => ({
 }));
 
 // ─── Firebase / auth mocks ───────────────────────────────────────────────────
-jest.mock('../services/firebase', () => ({ db: {} }));
-
 const mockGetCurrentUser = jest.fn();
+
+// auth.currentUser must mirror the user returned by getCurrentUser() so that
+// ensureMessagingAllowed() passes the identity check (auth.currentUser.uid ===
+// actingUserId) before it reaches the getCurrentUser() suspension check.
+jest.mock('../services/firebase', () => ({
+  db: {},
+  auth: {
+    get currentUser() {
+      const u = mockGetCurrentUser();
+      if (!u) return null;
+      return { uid: u.id };
+    },
+  },
+}));
+
 jest.mock('../services/auth', () => ({
   getCurrentUser: () => mockGetCurrentUser(),
 }));
@@ -178,21 +191,23 @@ describe('Scenario 2 – sanitization before storage', () => {
     expect(safe).toContain('Hello');
   });
 
-  it('escapes > that is not consumed by tag stripping', () => {
-    // <b> and </b> are stripped; the standalone > in '5 > 3' survives and is escaped
+  it('leaves > intact after HTML tag stripping (RN Text is XSS-safe, no entity encoding)', () => {
+    // <b> and </b> are stripped; the standalone > in '5 > 3' is left as-is
+    // because React Native <Text> renders characters literally — encoding would
+    // show raw HTML entities in the mobile UI.
     const raw = '5 > 3 and <b>bold</b>';
     const safe = sanitizeMultiline(raw, MAX_LENGTHS.message);
     expect(safe).not.toContain('<b>');
-    expect(safe).toContain('&gt;');
+    expect(safe).toContain('5 > 3');
     expect(safe).toContain('bold');
   });
 
-  it('escapes a standalone < that is not part of an HTML tag', () => {
-    // No closing >, so the regex /<[^>]*>/ does not match and < survives to be escaped
+  it('leaves < intact when it is not part of an HTML tag (RN Text is XSS-safe, no entity encoding)', () => {
+    // No closing >, so the regex /<[^>]*>/ does not match — < is left as-is.
+    // React Native <Text> renders characters literally, so encoding is not needed.
     const raw = 'score < 100';
     const safe = sanitizeMultiline(raw, MAX_LENGTHS.message);
-    expect(safe).toContain('&lt;');
-    expect(safe).not.toContain('<');
+    expect(safe).toContain('score < 100');
   });
 
   it('enforces MAX_LENGTHS.message (1000 chars) on message text', () => {
