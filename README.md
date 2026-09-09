@@ -24,6 +24,12 @@ Existing mentorship platforms aren't designed around neurodivergent needs — co
 
 This isn't a UI mockup — it's a shipped product with a real deployment pipeline (EAS builds for iOS/Android), real production auth/security hardening, and a real App Store review cycle with a diagnosed and fixed rejection.
 
+## Docs
+
+- [Product Requirements Doc](docs/prd.md)
+- [App Store rejection root-cause & fix](docs/APP_STORE_REJECTION_FIX_2026-05.md)
+- [Matching engine API](misfits/server/MATCHING_API.md)
+
 ## Screenshots
 
 <img src="Ipad/Screenshot%202026-04-30%20182834.png" width="45%" /> <img src="Ipad/Iphone/Screenshot%202026-04-30%20183158.png" width="45%" />
