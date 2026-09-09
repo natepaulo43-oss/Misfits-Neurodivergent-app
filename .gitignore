@@ -21,3 +21,7 @@ GoogleService-Info.plist
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+
+# Reviewer-only notes, never publish to GitHub
+reviewerinstructions.txt
+REVIEWER_NOTES.md
