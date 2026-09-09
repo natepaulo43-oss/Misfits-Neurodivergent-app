@@ -25,3 +25,4 @@ pnpm-debug.log*
 # Reviewer-only notes, never publish to GitHub
 REVIEWER_INSTRUCTIONS.txt
 REVIEWER_NOTES.md
+STORE_MARKETING.md
