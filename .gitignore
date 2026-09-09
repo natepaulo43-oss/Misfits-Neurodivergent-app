@@ -23,5 +23,5 @@ yarn-debug.log*
 pnpm-debug.log*
 
 # Reviewer-only notes, never publish to GitHub
-reviewerinstructions.txt
+REVIEWER_INSTRUCTIONS.txt
 REVIEWER_NOTES.md
