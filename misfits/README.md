@@ -7,7 +7,7 @@ A mobile app connecting neurodiverse students with mentors and curated books.
 - **Framework**: Expo (React Native)
 - **Language**: TypeScript
 - **Routing**: Expo Router (file-based)
-- **Backend**: Firebase (stubbed for MVP)
+- **Backend**: Firebase (Auth, Firestore, App Check, MFA are production; book purchase flow is currently a stub)
 
 ## Getting Started
 
@@ -97,11 +97,11 @@ misfits/
 
 ## Firebase Integration Points
 
-All Firebase calls are stubbed in `/services/`. Look for `TODO` comments indicating where to connect:
+Most Firebase calls in `/services/` are production, not stubbed:
 
-- `services/auth.ts` - Firebase Auth
-- `services/mentors.ts` - Firestore mentors collection
-- `services/books.ts` - Firestore books collection
+- `services/auth.ts` - Firebase Auth (production)
+- `services/mentors.ts` - Firestore mentors collection (production, with a logged fallback to mock data if Firestore returns nothing)
+- `services/books.ts` - Firestore books collection (stub — returns mock data, `purchaseBook()` doesn't create a real transaction)
 - `services/messages.ts` - Firestore messages/threads
 
 ## Out of Scope (Phase 1)
