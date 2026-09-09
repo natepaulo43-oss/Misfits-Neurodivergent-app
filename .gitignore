@@ -26,3 +26,5 @@ pnpm-debug.log*
 REVIEWER_INSTRUCTIONS.txt
 REVIEWER_NOTES.md
 STORE_MARKETING.md
+
+firestore-debug.log
